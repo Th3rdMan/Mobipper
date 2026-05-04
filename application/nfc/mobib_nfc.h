@@ -35,7 +35,7 @@ typedef struct {
 
 /* Maximum number of records we attempt to collect per dump. Bounded by
  * stack budget more than by Calypso (real cards expose a few dozen). */
-#define MOBIB_DUMP_RECORD_MAX 48
+#define MOBIB_DUMP_RECORD_MAX 128
 #define MOBIB_RECORD_DATA_CAP 32
 #define MOBIB_FCI_CAP         64
 

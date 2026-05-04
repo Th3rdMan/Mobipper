@@ -27,8 +27,9 @@ static const uint8_t MOBIB_SFI_PROBE[] = {
 };
 
 /* Records to try per SFI. Calypso EFs are typically 1..N records; we cap
- * here to keep the dump bounded and fast. */
-#define MOBIB_RECORDS_PER_SFI 4
+ * here to keep the dump bounded and fast. The walk stops on the first
+ * non-9000 SW so EFs shorter than this only cost one extra APDU. */
+#define MOBIB_RECORDS_PER_SFI 16
 
 struct MobibNfc {
     Nfc*             nfc;

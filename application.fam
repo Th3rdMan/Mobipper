@@ -14,6 +14,7 @@ App(
         "application/mobib_app.c",
         "application/calypso/calypso.c",
         "application/nfc/mobib_nfc.c",
+        "application/storage/mobib_storage.c",
         "application/scenes/scene_start.c",
         "application/scenes/scene_scan.c",
         "application/scenes/scene_about.c",

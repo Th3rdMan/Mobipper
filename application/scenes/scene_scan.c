@@ -5,6 +5,7 @@
 
 #include "../mobib_app.h"
 #include "../nfc/mobib_nfc.h"
+#include "../storage/mobib_storage.h"
 
 #include <notification/notification_messages.h>
 
@@ -16,8 +17,9 @@ typedef enum {
 /* The poller callback runs on the NFC worker thread and hands us a
  * pointer that becomes invalid as soon as the wrapper is stopped, so we
  * stash a private copy here for the GUI thread to consume. The dump is
- * ~1.6 KB which is too large for the GUI stack. */
-static MobibDump s_dump;
+ * a few KB which is too large for the GUI stack. */
+static MobibDump  s_dump;
+static FuriString* s_saved_path; /**< Owned by the scene; lives between events. */
 
 static void mobib_scan_nfc_cb(MobibNfcEvent event, const MobibDump* dump, void* ctx) {
     MobibApp* app = ctx;
@@ -75,6 +77,12 @@ static void mobib_scan_render_dump(MobibApp* app, const MobibDump* d) {
         body, "AID 1TIC.ICA: %s\n", d->calypso_selected ? "selected" : "no");
     furi_string_cat_printf(body, "Records: %u\n", (unsigned)d->record_count);
 
+    if(s_saved_path && furi_string_size(s_saved_path) > 0) {
+        const char* p = furi_string_get_cstr(s_saved_path);
+        const char* leaf = strrchr(p, '/');
+        furi_string_cat_printf(body, "Saved: %s\n", leaf ? leaf + 1 : p);
+    }
+
     if(d->record_count > 0) {
         furi_string_cat_str(body, "\n");
         mobib_scan_append_records(body, d);
@@ -86,6 +94,9 @@ static void mobib_scan_render_dump(MobibApp* app, const MobibDump* d) {
 
 void mobib_scene_scan_on_enter(void* context) {
     MobibApp* app = context;
+
+    if(!s_saved_path) s_saved_path = furi_string_alloc();
+    furi_string_reset(s_saved_path);
 
     mobib_scan_render_waiting(app);
     view_dispatcher_switch_to_view(app->view_dispatcher, MobibViewWidget);
@@ -104,6 +115,9 @@ bool mobib_scene_scan_on_event(void* context, SceneManagerEvent event) {
     case ScanCustomEventDumped:
         mobib_nfc_stop(app->nfc);
         notification_message(app->notifications, &sequence_success);
+        if(!mobib_storage_save_dump(&s_dump, s_saved_path)) {
+            furi_string_set(s_saved_path, "<save failed>");
+        }
         mobib_scan_render_dump(app, &s_dump);
         return true;
     case ScanCustomEventError:
