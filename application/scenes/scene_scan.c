@@ -8,6 +8,7 @@
 #include "../storage/mobib_storage.h"
 #include "../calypso/calypso_fci.h"
 #include "../calypso/calypso_env.h"
+#include "../calypso/calypso_event.h"
 
 #include <notification/notification_messages.h>
 
@@ -52,16 +53,44 @@ static void mobib_scan_append_pupi(FuriString* body, const MobibCardInfo* c) {
     furi_string_cat_str(body, "\n");
 }
 
-static void mobib_scan_append_records(FuriString* body, const MobibDump* d) {
-    for(size_t i = 0; i < d->record_count; ++i) {
-        const MobibRecord* r = &d->records[i];
-        furi_string_cat_printf(body, "SFI%02X r%u (%uB)\n", r->sfi, r->record, r->len);
-        const size_t preview = r->len < 12 ? r->len : 12;
-        for(size_t b = 0; b < preview; ++b) {
-            furi_string_cat_printf(body, "%02X ", r->data[b]);
+static void mobib_scan_append_event(FuriString* body, const CalypsoEvent* e) {
+    if(e->event_year) {
+        furi_string_cat_printf(
+            body, "%04u-%02u-%02u %02u:%02u",
+            e->event_year, e->event_month, e->event_day,
+            e->event_hour, e->event_minute);
+    } else {
+        furi_string_cat_printf(body, "??:?? (raw %u)", e->event_time_minutes);
+    }
+
+    if(e->flags & CALYPSO_EVENT_HAS_PROVIDER) {
+        const char* name = calypso_event_provider_name(e->service_provider);
+        if(name) {
+            furi_string_cat_printf(body, " %s", name);
+        } else {
+            furi_string_cat_printf(body, " p%02X", e->service_provider);
         }
-        if(r->len > preview) furi_string_cat_str(body, "…");
-        furi_string_cat_str(body, "\n");
+    }
+    if(e->flags & CALYPSO_EVENT_HAS_ROUTE) {
+        furi_string_cat_printf(body, " #%u", e->route_number);
+    }
+    furi_string_cat_str(body, "\n");
+}
+
+static void mobib_scan_append_journeys(FuriString* body, const MobibDump* d) {
+    /* SFI 23 (0x17) is the standard MOBIB transaction log — see metrodroid
+     * MobibTransitData.kt → CalypsoApplication.File.TICKETING_LOG. */
+    size_t shown = 0;
+    for(size_t i = 0; i < d->record_count && shown < 4; ++i) {
+        const MobibRecord* r = &d->records[i];
+        if(r->sfi != 0x17) continue;
+
+        CalypsoEvent ev;
+        if(!calypso_event_parse(r->data, r->len, &ev)) continue;
+
+        if(shown == 0) furi_string_cat_str(body, "\nJourneys:\n");
+        mobib_scan_append_event(body, &ev);
+        shown++;
     }
 }
 
@@ -156,10 +185,7 @@ static void mobib_scan_render_dump(MobibApp* app, const MobibDump* d) {
         furi_string_cat_printf(body, "Saved: %s\n", leaf ? leaf + 1 : p);
     }
 
-    if(d->record_count > 0) {
-        furi_string_cat_str(body, "\n");
-        mobib_scan_append_records(body, d);
-    }
+    mobib_scan_append_journeys(body, d);
 
     widget_add_text_scroll_element(w, 0, 16, 128, 48, furi_string_get_cstr(body));
     furi_string_free(body);

@@ -4,48 +4,9 @@
 
 #include "calypso_env.h"
 #include "calypso_bits.h"
+#include "calypso_date.h"
 
 #include <string.h>
-
-/* ----------------------------- helpers ----------------------------- */
-
-/* Convert "days since 1997-01-01" to Gregorian date. Calypso dates are
- * counted in proleptic civil days, so the simplest correct algorithm is
- * to walk year by year using a real leap-year predicate. The domain is
- * tiny (14 bits ⇒ at most ~44 years from 1997) so cost is irrelevant. */
-static bool calypso_days_to_date(
-    uint16_t days,
-    uint16_t* year_out,
-    uint8_t*  month_out,
-    uint8_t*  day_out) {
-    static const uint8_t mdays[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    uint16_t year = 1997;
-    uint32_t remaining = days;
-
-    while(true) {
-        const bool leap = ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
-        const uint16_t ydays = leap ? 366 : 365;
-        if(remaining < ydays) break;
-        remaining -= ydays;
-        year++;
-        if(year > 2100) return false; /* sanity */
-    }
-
-    uint8_t month = 1;
-    while(month <= 12) {
-        const bool leap = ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
-        uint8_t md = mdays[month - 1];
-        if(month == 2 && leap) md = 29;
-        if(remaining < md) break;
-        remaining -= md;
-        month++;
-    }
-
-    *year_out  = year;
-    *month_out = month;
-    *day_out   = (uint8_t)(remaining + 1);
-    return true;
-}
 
 /* ------------------------------ tables ----------------------------- */
 
@@ -120,7 +81,7 @@ bool calypso_env_parse(const uint8_t* rec, size_t rec_len, CalypsoEnvironment* o
     /* An unwritten Calypso field is all-zeros, which would correspond to
      * 1997-01-01. Treat that as "not set" rather than a real expiry. */
     if(out->validity_end_days != 0) {
-        calypso_days_to_date(
+        calypso_date_from_days(
             out->validity_end_days,
             &out->validity_end_year,
             &out->validity_end_month,
