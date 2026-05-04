@@ -1,0 +1,18 @@
+App(
+    appid="mobib",
+    name="MOBIB",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="mobib_app_main",
+    requires=["gui", "notification", "dialogs", "storage", "nfc"],
+    stack_size=4 * 1024,
+    fap_icon="icons/mobib_10px.png",
+    fap_category="NFC",
+    fap_author="i12bp8",
+    fap_version="0.1",
+    fap_description="Read and explore Belgian MOBIB transit cards (Calypso).",
+    sources=[
+        "application/mobib_app.c",
+        "application/scenes/scene_start.c",
+        "application/scenes/scene_about.c",
+    ],
+)

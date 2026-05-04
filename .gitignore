@@ -1,0 +1,18 @@
+# Build artefacts
+dist/
+build/
+.ufbt/
+*.fap
+*.elf
+*.o
+*.d
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Local notes that should not be committed
+scratch/
+*.local.*
