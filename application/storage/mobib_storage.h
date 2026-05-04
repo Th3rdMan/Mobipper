@@ -33,3 +33,13 @@
  * @return true iff the file was created and fully written.
  */
 bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out);
+
+/**
+ * @brief Load a previously persisted dump from SD.
+ *
+ * @param[in]  path  Absolute path to a .mobibdump FlipperFormat file.
+ * @param[out] dump  Populated on success.
+ * @return true iff the file was readable and at least the card / records
+ *         section parsed cleanly. Holder fields are best-effort.
+ */
+bool mobib_storage_load_dump(const char* path, MobibDump* dump);

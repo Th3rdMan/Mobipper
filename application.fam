@@ -27,6 +27,7 @@ App(
         "application/ui/mobib_format.c",
         "application/scenes/scene_start.c",
         "application/scenes/scene_scan.c",
+        "application/scenes/scene_dumps.c",
         "application/scenes/scene_card.c",
         "application/scenes/scene_card_section.c",
         "application/scenes/scene_about.c",

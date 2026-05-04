@@ -42,6 +42,9 @@ typedef struct {
 /** Returns "Male", "Female", or NULL. */
 const char* calypso_holder_gender_name(uint8_t gender);
 
+/** Returns "Mr", "Mrs", or NULL. */
+const char* calypso_holder_gender_title(uint8_t gender);
+
 /**
  * @brief Decode a concatenated HOLDER_EXTENDED record pair.
  *

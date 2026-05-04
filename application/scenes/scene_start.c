@@ -6,6 +6,7 @@
 
 typedef enum {
     StartSubmenuRead,
+    StartSubmenuBrowse,
     StartSubmenuAbout,
 } StartSubmenuIndex;
 
@@ -20,8 +21,9 @@ void mobib_scene_start_on_enter(void* context) {
 
     submenu_reset(m);
     submenu_set_header(m, "MOBIB");
-    submenu_add_item(m, "Read card",  StartSubmenuRead,  mobib_scene_start_submenu_cb, app);
-    submenu_add_item(m, "About",      StartSubmenuAbout, mobib_scene_start_submenu_cb, app);
+    submenu_add_item(m, "Read card",   StartSubmenuRead,   mobib_scene_start_submenu_cb, app);
+    submenu_add_item(m, "Saved cards", StartSubmenuBrowse, mobib_scene_start_submenu_cb, app);
+    submenu_add_item(m, "About",       StartSubmenuAbout,  mobib_scene_start_submenu_cb, app);
 
     submenu_set_selected_item(
         m, scene_manager_get_scene_state(app->scene_manager, MobibSceneStart));
@@ -37,6 +39,9 @@ bool mobib_scene_start_on_event(void* context, SceneManagerEvent event) {
         switch(event.event) {
         case StartSubmenuRead:
             scene_manager_next_scene(app->scene_manager, MobibSceneScan);
+            return true;
+        case StartSubmenuBrowse:
+            scene_manager_next_scene(app->scene_manager, MobibSceneDumps);
             return true;
         case StartSubmenuAbout:
             scene_manager_next_scene(app->scene_manager, MobibSceneAbout);

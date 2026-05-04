@@ -15,6 +15,15 @@ const char* calypso_holder_gender_name(uint8_t gender) {
     }
 }
 
+const char* calypso_holder_gender_title(uint8_t gender) {
+    /* zoobab uses these directly from the 2 gender bits. */
+    switch(gender) {
+    case 1:  return "Mr";
+    case 2:  return "Mrs";
+    default: return NULL;
+    }
+}
+
 /* Decode an EN1545 5-bit packed string. Per metrodroid's
  * En1545FixedString.parseString:
  *   - 5 bits per character.

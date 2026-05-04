@@ -151,3 +151,124 @@ bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out) {
     furi_record_close(RECORD_STORAGE);
     return ok;
 }
+
+/* ----------------------------------------------------------------- load */
+
+static void load_card_info(FlipperFormat* ff, MobibCardInfo* card) {
+    /* PUPI is stored as a variable-length hex array; read its length first. */
+    uint32_t len = 0;
+    if(flipper_format_get_value_count(ff, "PUPI", &len) && len > 0) {
+        if(len > sizeof(card->pupi)) len = sizeof(card->pupi);
+        if(flipper_format_read_hex(ff, "PUPI", card->pupi, len)) {
+            card->pupi_len = len;
+        }
+    }
+    /* Fixed-length fields. */
+    flipper_format_read_hex(ff, "ApplicationData", card->app_data, sizeof(card->app_data));
+
+    uint32_t v = 0;
+    if(flipper_format_read_uint32(ff, "ISO14443_4", &v, 1)) card->supports_iso14443_4 = v != 0;
+    if(flipper_format_read_uint32(ff, "FrameSizeMax", &v, 1)) card->frame_size_max = (uint16_t)v;
+    if(flipper_format_read_uint32(ff, "FWTfcMax", &v, 1)) card->fwt_fc_max = v;
+}
+
+static bool load_records_loop(FlipperFormat* ff, MobibDump* dump, uint32_t count) {
+    if(count > MOBIB_DUMP_RECORD_MAX) count = MOBIB_DUMP_RECORD_MAX;
+
+    char key[24];
+    for(uint32_t i = 0; i < count; ++i) {
+        MobibRecord* r = &dump->records[dump->record_count];
+
+        snprintf(key, sizeof(key), "Rec%02u_SFI", (unsigned)i);
+        uint32_t v32 = 0;
+        if(!flipper_format_read_uint32(ff, key, &v32, 1)) continue;
+        r->sfi = (uint8_t)v32;
+
+        snprintf(key, sizeof(key), "Rec%02u_Index", (unsigned)i);
+        if(!flipper_format_read_uint32(ff, key, &v32, 1)) continue;
+        r->record = (uint8_t)v32;
+
+        snprintf(key, sizeof(key), "Rec%02u_Data", (unsigned)i);
+        uint32_t dlen = 0;
+        if(!flipper_format_get_value_count(ff, key, &dlen)) continue;
+        if(dlen > sizeof(r->data)) dlen = sizeof(r->data);
+        if(!flipper_format_read_hex(ff, key, r->data, dlen)) continue;
+        r->len = (uint8_t)dlen;
+
+        dump->record_count++;
+    }
+    return true;
+}
+
+bool mobib_storage_load_dump(const char* path, MobibDump* dump) {
+    furi_assert(path);
+    furi_assert(dump);
+
+    memset(dump, 0, sizeof(*dump));
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    FlipperFormat* ff = flipper_format_buffered_file_alloc(storage);
+
+    bool ok = false;
+    do {
+        if(!flipper_format_buffered_file_open_existing(ff, path)) break;
+
+        FuriString* type = furi_string_alloc();
+        uint32_t version = 0;
+        const bool header_ok = flipper_format_read_header(ff, type, &version);
+        furi_string_free(type);
+        if(!header_ok) break;
+
+        load_card_info(ff, &dump->card);
+
+        /* Reads must follow the same order as writes in mobib_storage_write_*.
+         * The save sequence is: card info -> CalypsoSelected -> CalypsoFCI (if
+         * selected) -> Records -> per-record fields -> HolderExtPresent ->
+         * HolderExt1/2 (HolderExt block sits between FCI and Records in the
+         * current writer; verify there before changing). */
+        uint32_t selected = 0;
+        if(flipper_format_read_uint32(ff, "CalypsoSelected", &selected, 1)) {
+            dump->calypso_selected = selected != 0;
+        }
+
+        if(dump->calypso_selected) {
+            uint32_t fci_len = 0;
+            if(flipper_format_get_value_count(ff, "CalypsoFCI", &fci_len) &&
+               fci_len > 0) {
+                if(fci_len > sizeof(dump->fci)) fci_len = sizeof(dump->fci);
+                if(flipper_format_read_hex(ff, "CalypsoFCI", dump->fci, fci_len)) {
+                    dump->fci_len = fci_len;
+                }
+            }
+        }
+
+        /* Records count is written *before* HolderExt; the per-record
+         * fields (Rec00_SFI etc.) come after. */
+        uint32_t rec_count = 0;
+        flipper_format_read_uint32(ff, "Records", &rec_count, 1);
+
+        /* HolderExt1 / HolderExt2 — best effort. */
+        uint32_t ext_present = 0;
+        if(flipper_format_read_uint32(ff, "HolderExtPresent", &ext_present, 1) &&
+           ext_present) {
+            for(size_t i = 0; i < MOBIB_HOLDER_EXT_RECS; ++i) {
+                char hkey[16];
+                snprintf(hkey, sizeof(hkey), "HolderExt%u", (unsigned)(i + 1));
+                uint32_t l = 0;
+                if(!flipper_format_get_value_count(ff, hkey, &l)) continue;
+                if(l > MOBIB_HOLDER_EXT_REC_SZ) l = MOBIB_HOLDER_EXT_REC_SZ;
+                if(flipper_format_read_hex(ff, hkey, dump->holder_ext[i], l)) {
+                    dump->holder_ext_len[i] = (uint8_t)l;
+                    dump->holder_ext_present = true;
+                }
+            }
+        }
+
+        ok = load_records_loop(ff, dump, rec_count);
+    } while(0);
+
+    flipper_format_buffered_file_close(ff);
+    flipper_format_free(ff);
+    furi_record_close(RECORD_STORAGE);
+    return ok;
+}

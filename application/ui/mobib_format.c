@@ -141,38 +141,32 @@ static void format_holder(const MobibDump* d, FuriString* s) {
             }
         }
 
-        /* Dump the raw bytes so the user can verify alignment / encoding
-         * variants from a screenshot. metrodroid declares 464 bits (58
-         * bytes); real cards return 64 bytes, so the name field probably
-         * extends or another unknown field exists. We split the dump in
-         * three chunks so the user can read it without a side-scroll. */
-        furi_string_cat_printf(s, "Raw (%zuB):\n", flat_len);
-        for(size_t i = 0; i < flat_len; ++i) {
-            if(i % 8 == 0) furi_string_cat_printf(s, "%02zu ", i);
-            furi_string_cat_printf(s, "%02X", flat[i]);
-            if((i + 1) % 8 == 0) furi_string_cat_str(s, "\n");
-            else                 furi_string_cat_str(s, " ");
-        }
-        furi_string_cat_str(s, "\n");
-
         CalypsoHolder h;
         if(calypso_holder_parse(flat, flat_len, &h) && h.valid) {
             const char* gender = calypso_holder_gender_name(h.gender);
+            const char* title  = calypso_holder_gender_title(h.gender);
 
             if(h.gender == 0 && h.name_len == 0) {
                 furi_string_cat_str(s, "Anonymous card.\n");
-                furi_string_cat_str(s, "(file present but\n no holder data)\n");
+                furi_string_cat_str(s, "(holder file is\n present but blank)\n");
             } else {
                 if(h.name_len > 0) {
-                    furi_string_cat_printf(s, "Name\n  %s\n", h.name);
+                    if(title) {
+                        furi_string_cat_printf(s, "%s %s\n", title, h.name);
+                    } else {
+                        furi_string_cat_printf(s, "%s\n", h.name);
+                    }
                 }
                 if(gender) {
                     furi_string_cat_printf(s, "Gender  %s\n", gender);
                 }
                 if(h.birth_year_top2 || h.birth_year_bot2 ||
                    h.birth_month   || h.birth_day) {
+                    /* Birth date is BCD packed YYYYMMDD; the hex digits of
+                     * each byte ARE the decimal digits, so %02X reads as
+                     * the human number. */
                     furi_string_cat_printf(
-                        s, "Born  %02X%02X-%02X-%02X\n",
+                        s, "Born    %02X%02X-%02X-%02X\n",
                         h.birth_year_top2, h.birth_year_bot2,
                         h.birth_month, h.birth_day);
                 }
