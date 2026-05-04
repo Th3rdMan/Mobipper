@@ -34,13 +34,16 @@ static void parse_5bit_string(
 
     /* We read at most (total_bits / 5) characters; -1 to mirror metrodroid's
      * `i + 4 < start + length` guard which stops one character early. */
+    /* Per zoobab/mobib-extractor `bin_to_alphabet`: values outside 1..26
+     * are rendered as space. metrodroid is more lenient (only 0 and 31)
+     * but in practice MOBIB cards use 27..30 as separators / padding. */
     const size_t max_chars = total_bits / 5;
-    for(size_t c = 0; c + 1 < max_chars; ++c) {
+    for(size_t c = 0; c < max_chars; ++c) {
         const uint32_t v = calypso_bits_read(b, 5);
         if(!b->ok) break;
         char ch;
-        if(v == 0 || v == 31) {
-            if(!started) continue; /* skip leading spaces */
+        if(v < 1 || v > 26) {
+            if(!started) continue; /* skip leading padding */
             ch = ' ';
         } else {
             ch = (char)('A' + (int)v - 1);

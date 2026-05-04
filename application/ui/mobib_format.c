@@ -123,10 +123,18 @@ static void format_holder(const MobibDump* d, FuriString* s) {
 
     /* Try the rich source first: the path-selected HOLDER_EXTENDED file. */
     if(d->holder_ext_present) {
-        uint8_t flat[MOBIB_HOLDER_EXT_RECS * MOBIB_HOLDER_EXT_REC_SZ];
+        /* Each HOLDER_EXTENDED record contains 29 bytes of payload; the
+         * Calypso layer pads responses to 32 bytes. Concatenating the
+         * full 32-byte slots leaves three zero bytes embedded in the
+         * middle of the name field and breaks the bit alignment. We
+         * trim to 29 bytes per record to match metrodroid / zoobab. */
+        const size_t kRealRecLen = 29;
+
+        uint8_t flat[MOBIB_HOLDER_EXT_RECS * 29];
         size_t flat_len = 0;
         for(size_t i = 0; i < MOBIB_HOLDER_EXT_RECS; ++i) {
-            const size_t n = d->holder_ext_len[i];
+            size_t n = d->holder_ext_len[i];
+            if(n > kRealRecLen) n = kRealRecLen;
             if(n > 0) {
                 memcpy(&flat[flat_len], d->holder_ext[i], n);
                 flat_len += n;
