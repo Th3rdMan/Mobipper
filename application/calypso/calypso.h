@@ -70,10 +70,31 @@ bool calypso_select_aid(
     size_t         fci_cap,
     size_t*        fci_len);
 
+/**
+ * @brief SELECT FILE by 16-bit file identifier.
+ *
+ * Used to reach files that have no SFI alias, e.g. MOBIB's
+ * `HOLDER_EXTENDED` at file ID `0x3F1C`. Returns true iff SW == 9000.
+ */
+bool calypso_select_file_id(CalypsoCtx* ctx, uint16_t file_id);
+
 /** READ RECORD by SFI. Returns true and copies the record iff SW == 9000. */
 bool calypso_read_record(
     CalypsoCtx* ctx,
     uint8_t     sfi,
+    uint8_t     record,
+    uint8_t*    data,
+    size_t      data_cap,
+    size_t*     data_len);
+
+/**
+ * @brief READ RECORD on the currently selected EF (no SFI).
+ *
+ * P2 = 0x04 means "read by record number, current EF". Use after a
+ * `calypso_select_file_id` to walk a path-selected file.
+ */
+bool calypso_read_record_current(
+    CalypsoCtx* ctx,
     uint8_t     record,
     uint8_t*    data,
     size_t      data_cap,

@@ -67,6 +67,21 @@ static bool mobib_storage_write_records(FlipperFormat* ff, const MobibDump* dump
     const uint32_t count = dump->record_count;
     if(!flipper_format_write_uint32(ff, "Records", &count, 1)) return false;
 
+    /* Path-selected HOLDER_EXTENDED file. Persisted as a single hex blob
+     * since the records have no schema other than concatenation. */
+    if(dump->holder_ext_present) {
+        const uint32_t one = 1;
+        if(!flipper_format_write_uint32(ff, "HolderExtPresent", &one, 1)) return false;
+        for(size_t i = 0; i < MOBIB_HOLDER_EXT_RECS; ++i) {
+            if(dump->holder_ext_len[i] == 0) continue;
+            char hkey[24];
+            snprintf(hkey, sizeof(hkey), "HolderExt%u", (unsigned)(i + 1));
+            if(!flipper_format_write_hex(
+                   ff, hkey, dump->holder_ext[i], dump->holder_ext_len[i]))
+                return false;
+        }
+    }
+
     char key[24];
     for(size_t i = 0; i < dump->record_count; ++i) {
         const MobibRecord* r = &dump->records[i];

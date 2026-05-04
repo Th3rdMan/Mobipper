@@ -123,3 +123,33 @@ bool calypso_read_record(
     if(data_len) *data_len = ok ? rxlen : 0;
     return ok && sw == CALYPSO_SW_OK;
 }
+
+bool calypso_select_file_id(CalypsoCtx* ctx, uint16_t file_id) {
+    /* SELECT FILE: 00 A4 08 00 02 <hi> <lo> Le=00
+     * P1=08 selects by path from MF; P2=00 returns FCI as response. */
+    const uint8_t apdu[7] = {
+        0x00, 0xA4, 0x08, 0x00,
+        0x02,
+        (uint8_t)(file_id >> 8),
+        (uint8_t)(file_id & 0xFF),
+    };
+
+    uint16_t sw = 0;
+    const bool ok = calypso_apdu(ctx, apdu, sizeof(apdu), NULL, 0, NULL, &sw);
+    return ok && sw == CALYPSO_SW_OK;
+}
+
+bool calypso_read_record_current(
+    CalypsoCtx* ctx,
+    uint8_t     record,
+    uint8_t*    data,
+    size_t      data_cap,
+    size_t*     data_len) {
+    /* READ RECORD: 00 B2 <record> 04 00 — current EF. */
+    const uint8_t apdu[5] = {0x00, 0xB2, record, 0x04, 0x00};
+    uint16_t sw    = 0;
+    size_t   rxlen = 0;
+    const bool ok  = calypso_apdu(ctx, apdu, sizeof(apdu), data, data_cap, &rxlen, &sw);
+    if(data_len) *data_len = ok ? rxlen : 0;
+    return ok && sw == CALYPSO_SW_OK;
+}

@@ -95,6 +95,21 @@ static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dum
             }
             if(dump->record_count >= MOBIB_DUMP_RECORD_MAX) break;
         }
+
+        /* HOLDER_EXTENDED is selected by file ID 0x3F1C, not by SFI. We
+         * try after the SFI walk so failures here don't poison the rest
+         * of the dump. The file is two records of ~29 bytes each. */
+        if(calypso_select_file_id(ctx, 0x3F1C)) {
+            for(uint8_t rec = 1; rec <= MOBIB_HOLDER_EXT_RECS; ++rec) {
+                size_t len = 0;
+                uint8_t* buf = dump->holder_ext[rec - 1];
+                if(calypso_read_record_current(
+                       ctx, rec, buf, MOBIB_HOLDER_EXT_REC_SZ, &len)) {
+                    dump->holder_ext_len[rec - 1] = (uint8_t)len;
+                    dump->holder_ext_present = true;
+                }
+            }
+        }
     }
 
     calypso_ctx_free(ctx);

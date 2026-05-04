@@ -14,8 +14,10 @@
 #include "../calypso/calypso_contract.h"
 #include "../calypso/calypso_stations.h"
 #include "../calypso/calypso_sfi.h"
+#include "../calypso/calypso_holder.h"
 
 #include <inttypes.h>
+#include <string.h>
 
 const char* mobib_section_title(MobibSection s) {
     switch(s) {
@@ -115,42 +117,61 @@ static void format_overview(const MobibDump* d, FuriString* s) {
 static void format_holder(const MobibDump* d, FuriString* s) {
     append_divider(s, "HOLDER");
 
+    /* Try the rich source first: the path-selected HOLDER_EXTENDED file. */
+    if(d->holder_ext_present) {
+        uint8_t flat[MOBIB_HOLDER_EXT_RECS * MOBIB_HOLDER_EXT_REC_SZ];
+        size_t flat_len = 0;
+        for(size_t i = 0; i < MOBIB_HOLDER_EXT_RECS; ++i) {
+            const size_t n = d->holder_ext_len[i];
+            if(n > 0) {
+                memcpy(&flat[flat_len], d->holder_ext[i], n);
+                flat_len += n;
+            }
+        }
+
+        CalypsoHolder h;
+        if(calypso_holder_parse(flat, flat_len, &h) && h.valid) {
+            const char* gender = calypso_holder_gender_name(h.gender);
+
+            if(h.gender == 0 && h.name_len == 0) {
+                furi_string_cat_str(s, "Anonymous card.\n");
+                furi_string_cat_str(s, "(file present but\n no holder data)\n");
+            } else {
+                if(h.name_len > 0) {
+                    furi_string_cat_printf(s, "Name\n  %s\n", h.name);
+                }
+                if(gender) {
+                    furi_string_cat_printf(s, "Gender  %s\n", gender);
+                }
+                if(h.birth_year_top2 || h.birth_year_bot2 ||
+                   h.birth_month   || h.birth_day) {
+                    furi_string_cat_printf(
+                        s, "Born  %02X%02X-%02X-%02X\n",
+                        h.birth_year_top2, h.birth_year_bot2,
+                        h.birth_month, h.birth_day);
+                }
+            }
+            furi_string_cat_str(s, "\n");
+        } else {
+            furi_string_cat_str(s, "Holder file present\nbut unparseable.\n\n");
+        }
+    }
+
+    /* Then add what the Environment record carries (postal code is here). */
     CalypsoEnvironment env;
-    if(!parse_env(d, &env)) {
-        furi_string_cat_str(s, "Environment record\nis not readable.\n");
-        return;
-    }
-
-    const bool any_birth =
-        env.birth_year_top2 || env.birth_year_bot2 ||
-        env.birth_month_bcd || env.birth_day_bcd;
-    const bool any_holder = any_birth || env.holder_postal_code;
-
-    if(!any_holder) {
-        furi_string_cat_str(s, "Anonymous card.\n\n");
-        furi_string_cat_str(s, "MOBIB Basic carries\n");
-        furi_string_cat_str(s, "no personal data.\n");
-        furi_string_cat_str(s, "Use the trip log to\n");
-        furi_string_cat_str(s, "see what was done.\n");
-        return;
-    }
-
-    if(any_birth) {
-        furi_string_cat_printf(
-            s, "Born  %02X%02X-%02X-%02X\n",
-            env.birth_year_top2, env.birth_year_bot2,
-            env.birth_month_bcd, env.birth_day_bcd);
-    }
-    if(env.holder_postal_code) {
+    if(parse_env(d, &env) && env.holder_postal_code) {
         furi_string_cat_printf(s, "Postal code  %u\n", env.holder_postal_code);
     }
 
-    furi_string_cat_str(s, "\nName and gender are\n");
-    furi_string_cat_str(s, "stored separately\n");
-    furi_string_cat_str(s, "(HOLDER_EXTENDED at\n");
-    furi_string_cat_str(s, "ISO file 0x3F1C);\n");
-    furi_string_cat_str(s, "this app does not\n");
-    furi_string_cat_str(s, "yet read it.\n");
+    if(!d->holder_ext_present) {
+        furi_string_cat_str(s, "Anonymous card.\n\n");
+        furi_string_cat_str(s, "MOBIB Basic does not\n");
+        furi_string_cat_str(s, "store holder data.\n");
+        furi_string_cat_str(s, "Personalised cards\n");
+        furi_string_cat_str(s, "(SNCB / TEC / De Lijn)\n");
+        furi_string_cat_str(s, "expose name & gender\n");
+        furi_string_cat_str(s, "in HOLDER_EXTENDED.\n");
+    }
 }
 
 /* ----------------------------- Contracts ---------------------------- */
@@ -189,7 +210,11 @@ static void format_contracts(const MobibDump* d, FuriString* s) {
             furi_string_cat_printf(s, "  Length %u %s\n", c.duration, unit);
         }
         if(c.flags & CALYPSO_CONTRACT_HAS_PRICE && c.price_amount) {
-            furi_string_cat_printf(s, "  Price %u\n", c.price_amount);
+            /* Calypso stores the price in cents (centimes) per metrodroid's
+             * En1545LookupSTR.parseCurrency → TransitCurrency.EUR(price). */
+            furi_string_cat_printf(
+                s, "  Price \xe2\x82\xac%u.%02u\n",
+                c.price_amount / 100, c.price_amount % 100);
         }
         furi_string_cat_str(s, "\n");
     }
@@ -253,23 +278,28 @@ static void format_journeys(const MobibDump* d, FuriString* s) {
         /* Provider + location line. */
         if(e->flags & CALYPSO_EVENT_HAS_PROVIDER) {
             const char* prov = calypso_event_provider_name(e->service_provider);
-            furi_string_cat_printf(s, "  %s",
-                prov ? prov : "Unknown");
-
-            if(e->service_provider == CALYPSO_PROVIDER_METRO ||
-               e->service_provider == CALYPSO_PROVIDER_PREMETRO) {
-                const CalypsoMetroStation* st =
-                    calypso_metro_station_lookup_id(e->location_id);
-                if(st) {
-                    furi_string_cat_printf(s, " %s\n  %s\n", st->line, st->name);
-                } else {
-                    furi_string_cat_printf(s, "\n  loc %lu\n",
-                        (unsigned long)e->location_id);
-                }
-            } else if(e->flags & CALYPSO_EVENT_HAS_ROUTE) {
-                furi_string_cat_printf(s, " r%u\n", e->route_number);
+            if(prov) {
+                furi_string_cat_printf(s, "  %s", prov);
             } else {
-                furi_string_cat_str(s, "\n");
+                furi_string_cat_printf(s, "  Mode %u", e->service_provider);
+            }
+
+            /* Route number is the most useful field for buses/trams. */
+            if(e->flags & CALYPSO_EVENT_HAS_ROUTE && e->route_number) {
+                furi_string_cat_printf(s, " line %u", e->route_number);
+            }
+            furi_string_cat_str(s, "\n");
+
+            /* Try station lookup as a separate line. */
+            const CalypsoMetroStation* st =
+                calypso_metro_station_lookup_id(e->location_id);
+            if(st) {
+                furi_string_cat_printf(s, "  %s · %s\n", st->line, st->name);
+            } else if(e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus) {
+                furi_string_cat_printf(s, "  stop %u\n", e->location_id_bus);
+            } else if(e->location_id) {
+                furi_string_cat_printf(s, "  loc %lu\n",
+                    (unsigned long)e->location_id);
             }
         }
 

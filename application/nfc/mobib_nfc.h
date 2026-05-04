@@ -46,6 +46,11 @@ typedef struct {
     uint8_t data[MOBIB_RECORD_DATA_CAP];
 } MobibRecord;
 
+/* HOLDER_EXTENDED at file ID 0x3F1C carries the human identity (name,
+ * gender, birthdate). Two records of ~29 bytes each, concatenated. */
+#define MOBIB_HOLDER_EXT_RECS  2
+#define MOBIB_HOLDER_EXT_REC_SZ 32
+
 typedef struct MobibDump {
     MobibCardInfo card;
     bool          calypso_selected;       /**< AID 1TIC.ICA accepted. */
@@ -53,6 +58,12 @@ typedef struct MobibDump {
     size_t        fci_len;
     MobibRecord   records[MOBIB_DUMP_RECORD_MAX];
     size_t        record_count;
+
+    /* Path-selected files. We only persist what fits a known schema; the
+     * raw bytes go into the FlipperFormat dump under matching keys. */
+    bool          holder_ext_present;
+    uint8_t       holder_ext[MOBIB_HOLDER_EXT_RECS][MOBIB_HOLDER_EXT_REC_SZ];
+    uint8_t       holder_ext_len[MOBIB_HOLDER_EXT_RECS];
 } MobibDump;
 
 typedef enum {

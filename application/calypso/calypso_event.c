@@ -24,9 +24,11 @@ static bool buffer_is_all_zero(const uint8_t* buf, size_t len) {
 }
 
 const char* calypso_event_provider_name(uint8_t provider) {
+    /* Only the BUS / TRAM codes are confirmed by metrodroid's MobibLookup.
+     * zoobab reported METRO=0 / PREMETRO=7 in 2009 but real Belgian users
+     * report bus events also reading as code 0 on modern v3 cards, so we
+     * stop pretending and show "Mode N" for unverified codes. */
     switch(provider) {
-    case CALYPSO_PROVIDER_METRO:    return "Metro";
-    case CALYPSO_PROVIDER_PREMETRO: return "Premetro";
     case CALYPSO_PROVIDER_BUS:      return "Bus";
     case CALYPSO_PROVIDER_TRAM:     return "Tram";
     default:                        return NULL;
