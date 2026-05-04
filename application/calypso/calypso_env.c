@@ -76,7 +76,31 @@ bool calypso_env_parse(const uint8_t* rec, size_t rec_len, CalypsoEnvironment* o
     out->issuer_id = 0;
 
     out->validity_end_days = (uint16_t)calypso_bits_read(&b, 14);
-    if(!b.ok) return false;
+
+    /* ENV_UNKNOWN_C: 6 bits for v<=2, 10 bits for v>=3. */
+    calypso_bits_skip(&b, out->version >= 3 ? 10 : 6);
+
+    /* HOLDER_BIRTH_DATE: 32 bits, BCD packed as YYYYMMDD. */
+    out->birth_year_top2 = (uint8_t)calypso_bits_read(&b, 8);
+    out->birth_year_bot2 = (uint8_t)calypso_bits_read(&b, 8);
+    out->birth_month_bcd = (uint8_t)calypso_bits_read(&b, 8);
+    out->birth_day_bcd   = (uint8_t)calypso_bits_read(&b, 8);
+
+    /* ENV_CARD_SERIAL: 76 bits BCD — skip for now, the FCI carries the
+     * canonical PUPI-derived application serial number anyway. */
+    calypso_bits_skip(&b, 76);
+
+    /* ENV_UNKNOWN_D: 5 bits. */
+    calypso_bits_skip(&b, 5);
+
+    /* HOLDER_INT_POSTAL_CODE: 14 bits. */
+    out->holder_postal_code = (uint16_t)calypso_bits_read(&b, 14);
+
+    if(!b.ok) {
+        /* Validity-end fields decoded earlier are still useful, so don't
+         * abort. We just leave the holder fields as zero when the record
+         * is short. */
+    }
 
     /* An unwritten Calypso field is all-zeros, which would correspond to
      * 1997-01-01. Treat that as "not set" rather than a real expiry. */

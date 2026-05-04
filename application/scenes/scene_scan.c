@@ -1,15 +1,15 @@
 /*
- * MOBIB — Scan scene: poll for a card, run a Calypso dump and render
- * a scrollable summary of every record we managed to read.
+ * MOBIB — Scan scene.
+ *
+ * Polls for a Type-B card, runs the Calypso dump, persists it to SD,
+ * and on success advances to `scene_card` which presents a paginated
+ * overview. The scene itself only owns the "scanning…" prompt and the
+ * NFC instance.
  */
 
 #include "../mobib_app.h"
 #include "../nfc/mobib_nfc.h"
 #include "../storage/mobib_storage.h"
-#include "../calypso/calypso_fci.h"
-#include "../calypso/calypso_env.h"
-#include "../calypso/calypso_event.h"
-#include "../calypso/calypso_stations.h"
 
 #include <notification/notification_messages.h>
 
@@ -18,18 +18,12 @@ typedef enum {
     ScanCustomEventError,
 } ScanCustomEvent;
 
-/* The poller callback runs on the NFC worker thread and hands us a
- * pointer that becomes invalid as soon as the wrapper is stopped, so we
- * stash a private copy here for the GUI thread to consume. The dump is
- * a few KB which is too large for the GUI stack. */
-static MobibDump  s_dump;
-static FuriString* s_saved_path; /**< Owned by the scene; lives between events. */
-
 static void mobib_scan_nfc_cb(MobibNfcEvent event, const MobibDump* dump, void* ctx) {
     MobibApp* app = ctx;
 
     if(event == MobibNfcEventDumped && dump) {
-        s_dump = *dump;
+        app->dump       = *dump;
+        app->dump_valid = true;
         view_dispatcher_send_custom_event(app->view_dispatcher, ScanCustomEventDumped);
     } else {
         view_dispatcher_send_custom_event(app->view_dispatcher, ScanCustomEventError);
@@ -46,171 +40,11 @@ static void mobib_scan_render_waiting(MobibApp* app) {
         "Hold MOBIB card\nflat against the\nback of the Flipper");
 }
 
-static void mobib_scan_append_pupi(FuriString* body, const MobibCardInfo* c) {
-    furi_string_cat_str(body, "PUPI ");
-    for(size_t i = 0; i < c->pupi_len; ++i) {
-        furi_string_cat_printf(body, "%02X", c->pupi[i]);
-    }
-    furi_string_cat_str(body, "\n");
-}
-
-static void mobib_scan_append_event(FuriString* body, const CalypsoEvent* e) {
-    if(e->event_year) {
-        furi_string_cat_printf(
-            body, "%04u-%02u-%02u %02u:%02u",
-            e->event_year, e->event_month, e->event_day,
-            e->event_hour, e->event_minute);
-    } else {
-        furi_string_cat_printf(body, "??:?? (raw %u)", e->event_time_minutes);
-    }
-
-    if(e->flags & CALYPSO_EVENT_HAS_PROVIDER) {
-        const char* name = calypso_event_provider_name(e->service_provider);
-        furi_string_cat_printf(body, " %s", name ? name : "?");
-    }
-
-    /* Translate route + location into something readable when we can. */
-    bool labelled = false;
-    if((e->flags & CALYPSO_EVENT_HAS_PROVIDER) &&
-       (e->service_provider == CALYPSO_PROVIDER_METRO ||
-        e->service_provider == CALYPSO_PROVIDER_PREMETRO)) {
-        const CalypsoMetroStation* st = calypso_metro_station_lookup_id(e->location_id);
-        if(st) {
-            furi_string_cat_printf(body, " %s %s", st->line, st->name);
-            labelled = true;
-        }
-    }
-
-    if(!labelled) {
-        if(e->flags & CALYPSO_EVENT_HAS_ROUTE) {
-            furi_string_cat_printf(body, " r%u", e->route_number);
-        }
-        if(e->flags & CALYPSO_EVENT_HAS_PROVIDER && e->location_id != 0) {
-            furi_string_cat_printf(body, " loc%lu", (unsigned long)e->location_id);
-        }
-    }
-    furi_string_cat_str(body, "\n");
-}
-
-static void mobib_scan_append_journeys(FuriString* body, const MobibDump* d) {
-    /* SFI 23 (0x17) is the standard MOBIB transaction log — see metrodroid
-     * MobibTransitData.kt → CalypsoApplication.File.TICKETING_LOG. */
-    size_t shown = 0;
-    for(size_t i = 0; i < d->record_count && shown < 4; ++i) {
-        const MobibRecord* r = &d->records[i];
-        if(r->sfi != 0x17) continue;
-
-        CalypsoEvent ev;
-        if(!calypso_event_parse(r->data, r->len, &ev)) continue;
-
-        if(shown == 0) furi_string_cat_str(body, "\nJourneys:\n");
-        mobib_scan_append_event(body, &ev);
-        shown++;
-    }
-}
-
-static void mobib_scan_append_fci(FuriString* body, const MobibDump* d) {
-    if(!d->calypso_selected || d->fci_len == 0) {
-        furi_string_cat_str(body, "AID: not selected\n");
-        return;
-    }
-
-    CalypsoFci fci;
-    if(!calypso_fci_parse(d->fci, d->fci_len, &fci) || !fci.valid) {
-        furi_string_cat_str(body, "FCI: unparsed\n");
-        return;
-    }
-
-    if(fci.is_calypso_aid) {
-        furi_string_cat_str(body, "AID: 1TIC.ICA");
-        if(fci.is_mobib_extension) furi_string_cat_str(body, " (MOBIB)");
-        furi_string_cat_str(body, "\n");
-    } else {
-        furi_string_cat_str(body, "AID: ");
-        for(size_t i = 0; i < fci.df_name_len; ++i) {
-            furi_string_cat_printf(body, "%02X", fci.df_name[i]);
-        }
-        furi_string_cat_str(body, "\n");
-    }
-
-    if(fci.has_aid_extension) {
-        furi_string_cat_str(body, "Ext: ");
-        for(size_t i = 0; i < CALYPSO_AID_EXTENSION_LEN; ++i) {
-            furi_string_cat_printf(body, "%02X ", fci.aid_extension[i]);
-        }
-        furi_string_cat_str(body, "\n");
-    }
-
-    if(fci.app_serial_len > 0) {
-        furi_string_cat_str(body, "Serial ");
-        for(size_t i = 0; i < fci.app_serial_len; ++i) {
-            furi_string_cat_printf(body, "%02X", fci.app_serial[i]);
-        }
-        furi_string_cat_str(body, "\n");
-    }
-}
-
-static void mobib_scan_render_dump(MobibApp* app, const MobibDump* d) {
-    Widget* w = app->widget;
-    widget_reset(w);
-
-    bool is_mobib = false;
-    if(d->calypso_selected && d->fci_len > 0) {
-        CalypsoFci fci;
-        if(calypso_fci_parse(d->fci, d->fci_len, &fci)) is_mobib = fci.is_mobib_extension;
-    }
-    const char* title = is_mobib ? "\e#MOBIB card\e#"
-                       : (d->calypso_selected ? "\e#Calypso card\e#" : "\e#Type-B card\e#");
-    widget_add_text_box_element(w, 0, 0, 128, 14, AlignCenter, AlignTop, title, false);
-
-    FuriString* body = furi_string_alloc();
-
-    mobib_scan_append_pupi(body, &d->card);
-    mobib_scan_append_fci(body, d);
-
-    /* Environment record (SFI 7, record 1) — country, network, expiry. */
-    for(size_t i = 0; i < d->record_count; ++i) {
-        const MobibRecord* r = &d->records[i];
-        if(r->sfi != 0x07 || r->record != 1) continue;
-        CalypsoEnvironment env;
-        if(!calypso_env_parse(r->data, r->len, &env)) break;
-        if(env.country_name) {
-            furi_string_cat_printf(body, "Country: %s\n", env.country_name);
-        } else {
-            furi_string_cat_printf(body, "Country: %u\n", env.country_code);
-        }
-        if(env.network_name) {
-            furi_string_cat_printf(body, "Network: %s\n", env.network_name);
-        } else {
-            furi_string_cat_printf(body, "Network: 0x%03X\n", env.network_id);
-        }
-        if(env.validity_end_year) {
-            furi_string_cat_printf(
-                body, "Expires: %04u-%02u-%02u\n",
-                env.validity_end_year, env.validity_end_month, env.validity_end_day);
-        }
-        break;
-    }
-
-    furi_string_cat_printf(body, "Records: %u\n", (unsigned)d->record_count);
-
-    if(s_saved_path && furi_string_size(s_saved_path) > 0) {
-        const char* p = furi_string_get_cstr(s_saved_path);
-        const char* leaf = strrchr(p, '/');
-        furi_string_cat_printf(body, "Saved: %s\n", leaf ? leaf + 1 : p);
-    }
-
-    mobib_scan_append_journeys(body, d);
-
-    widget_add_text_scroll_element(w, 0, 16, 128, 48, furi_string_get_cstr(body));
-    furi_string_free(body);
-}
-
 void mobib_scene_scan_on_enter(void* context) {
     MobibApp* app = context;
 
-    if(!s_saved_path) s_saved_path = furi_string_alloc();
-    furi_string_reset(s_saved_path);
+    app->dump_valid = false;
+    furi_string_reset(app->dump_path);
 
     mobib_scan_render_waiting(app);
     view_dispatcher_switch_to_view(app->view_dispatcher, MobibViewWidget);
@@ -229,10 +63,14 @@ bool mobib_scene_scan_on_event(void* context, SceneManagerEvent event) {
     case ScanCustomEventDumped:
         mobib_nfc_stop(app->nfc);
         notification_message(app->notifications, &sequence_success);
-        if(!mobib_storage_save_dump(&s_dump, s_saved_path)) {
-            furi_string_set(s_saved_path, "<save failed>");
+
+        /* Persist to SD; failure is non-fatal — the user can still browse. */
+        if(!mobib_storage_save_dump(&app->dump, app->dump_path)) {
+            furi_string_set(app->dump_path, "<save failed>");
         }
-        mobib_scan_render_dump(app, &s_dump);
+
+        /* Replace ourselves with the overview scene so back jumps to start. */
+        scene_manager_next_scene(app->scene_manager, MobibSceneCard);
         return true;
     case ScanCustomEventError:
         return true;

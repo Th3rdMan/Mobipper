@@ -42,6 +42,14 @@ typedef struct {
     uint8_t  validity_end_month;
     uint8_t  validity_end_day;
 
+    /* Holder fields. Always present in the bit stream but typically zero
+     * on anonymous MOBIB Basic cards. */
+    uint8_t  birth_year_top2;   /**< First two BCD digits, e.g. 0x19 or 0x20.   */
+    uint8_t  birth_year_bot2;   /**< Last two BCD digits.                       */
+    uint8_t  birth_month_bcd;   /**< BCD-encoded month, 0x01..0x12.             */
+    uint8_t  birth_day_bcd;     /**< BCD-encoded day, 0x01..0x31.               */
+    uint16_t holder_postal_code;
+
     /* Best-effort human labels. NULL when unknown — never freed by the caller. */
     const char* country_name;
     const char* network_name;

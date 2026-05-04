@@ -74,6 +74,13 @@ static MobibApp* mobib_app_alloc(void) {
     view_dispatcher_add_view(
         app->view_dispatcher, MobibViewWidget, widget_get_view(app->widget));
 
+    app->text_box = text_box_alloc();
+    view_dispatcher_add_view(
+        app->view_dispatcher, MobibViewTextBox, text_box_get_view(app->text_box));
+
+    app->dump_path   = furi_string_alloc();
+    app->text_buffer = furi_string_alloc();
+
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
 
     return app;
@@ -84,9 +91,14 @@ static void mobib_app_free(MobibApp* app) {
 
     view_dispatcher_remove_view(app->view_dispatcher, MobibViewSubmenu);
     view_dispatcher_remove_view(app->view_dispatcher, MobibViewWidget);
+    view_dispatcher_remove_view(app->view_dispatcher, MobibViewTextBox);
 
     submenu_free(app->submenu);
     widget_free(app->widget);
+    text_box_free(app->text_box);
+
+    furi_string_free(app->dump_path);
+    furi_string_free(app->text_buffer);
 
     scene_manager_free(app->scene_manager);
     view_dispatcher_free(app->view_dispatcher);
