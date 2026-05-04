@@ -47,12 +47,14 @@
 #define CALYPSO_EVENT_HAS_SERIAL        (1u << 3)
 #define CALYPSO_EVENT_HAS_FIRST_STAMP   (1u << 4)
 
-/* Service provider codes used by MOBIB. The values match the constants
- * declared in metrodroid's MobibLookup. Higher values exist (metro,
- * train, ...) but no public reference enumerates them all, so callers
- * fall back to displaying the raw code for unknown providers. */
-#define CALYPSO_PROVIDER_BUS  0x0Fu
-#define CALYPSO_PROVIDER_TRAM 0x16u
+/* Service provider codes used by MOBIB. Cross-referenced between
+ * metrodroid (MobibLookup.kt: BUS=0x0F, TRAM=0x16) and zoobab's
+ * mobib-extractor (METRO=0b00000, PREMETRO=0b00111, BUS=0b01111,
+ * TRAM=0b10110). Unknown codes are displayed as raw hex. */
+#define CALYPSO_PROVIDER_METRO    0x00u
+#define CALYPSO_PROVIDER_PREMETRO 0x07u
+#define CALYPSO_PROVIDER_BUS      0x0Fu
+#define CALYPSO_PROVIDER_TRAM     0x16u
 
 typedef struct {
     bool     valid;

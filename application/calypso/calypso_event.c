@@ -25,9 +25,11 @@ static bool buffer_is_all_zero(const uint8_t* buf, size_t len) {
 
 const char* calypso_event_provider_name(uint8_t provider) {
     switch(provider) {
-    case CALYPSO_PROVIDER_BUS:  return "Bus";
-    case CALYPSO_PROVIDER_TRAM: return "Tram";
-    default:                    return NULL;
+    case CALYPSO_PROVIDER_METRO:    return "Metro";
+    case CALYPSO_PROVIDER_PREMETRO: return "Premetro";
+    case CALYPSO_PROVIDER_BUS:      return "Bus";
+    case CALYPSO_PROVIDER_TRAM:     return "Tram";
+    default:                        return NULL;
     }
 }
 

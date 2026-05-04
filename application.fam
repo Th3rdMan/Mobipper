@@ -18,6 +18,7 @@ App(
         "application/calypso/calypso_env.c",
         "application/calypso/calypso_date.c",
         "application/calypso/calypso_event.c",
+        "application/calypso/calypso_stations.c",
         "application/nfc/mobib_nfc.c",
         "application/storage/mobib_storage.c",
         "application/scenes/scene_start.c",

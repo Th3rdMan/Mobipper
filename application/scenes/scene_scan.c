@@ -9,6 +9,7 @@
 #include "../calypso/calypso_fci.h"
 #include "../calypso/calypso_env.h"
 #include "../calypso/calypso_event.h"
+#include "../calypso/calypso_stations.h"
 
 #include <notification/notification_messages.h>
 
@@ -65,14 +66,28 @@ static void mobib_scan_append_event(FuriString* body, const CalypsoEvent* e) {
 
     if(e->flags & CALYPSO_EVENT_HAS_PROVIDER) {
         const char* name = calypso_event_provider_name(e->service_provider);
-        if(name) {
-            furi_string_cat_printf(body, " %s", name);
-        } else {
-            furi_string_cat_printf(body, " p%02X", e->service_provider);
+        furi_string_cat_printf(body, " %s", name ? name : "?");
+    }
+
+    /* Translate route + location into something readable when we can. */
+    bool labelled = false;
+    if((e->flags & CALYPSO_EVENT_HAS_PROVIDER) &&
+       (e->service_provider == CALYPSO_PROVIDER_METRO ||
+        e->service_provider == CALYPSO_PROVIDER_PREMETRO)) {
+        const CalypsoMetroStation* st = calypso_metro_station_lookup_id(e->location_id);
+        if(st) {
+            furi_string_cat_printf(body, " %s %s", st->line, st->name);
+            labelled = true;
         }
     }
-    if(e->flags & CALYPSO_EVENT_HAS_ROUTE) {
-        furi_string_cat_printf(body, " #%u", e->route_number);
+
+    if(!labelled) {
+        if(e->flags & CALYPSO_EVENT_HAS_ROUTE) {
+            furi_string_cat_printf(body, " r%u", e->route_number);
+        }
+        if(e->flags & CALYPSO_EVENT_HAS_PROVIDER && e->location_id != 0) {
+            furi_string_cat_printf(body, " loc%lu", (unsigned long)e->location_id);
+        }
     }
     furi_string_cat_str(body, "\n");
 }
