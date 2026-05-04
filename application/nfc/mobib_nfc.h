@@ -51,6 +51,19 @@ typedef struct {
 #define MOBIB_HOLDER_EXT_RECS  2
 #define MOBIB_HOLDER_EXT_REC_SZ 32
 
+/* Path-selected "extra" files probed after the SFI walk. Each slot
+ * stores up to 64 bytes of the first record. See mobib_nfc.c for the
+ * list of files probed. */
+#define MOBIB_EXTRA_FILES      8
+#define MOBIB_EXTRA_DATA_CAP  64
+
+typedef struct {
+    char     label[16];   /**< short human label, e.g. "ICC" or "ID". */
+    uint16_t file_id;     /**< 16-bit path, 0 = empty slot.           */
+    uint8_t  len;
+    uint8_t  data[MOBIB_EXTRA_DATA_CAP];
+} MobibExtraFile;
+
 typedef struct MobibDump {
     MobibCardInfo card;
     bool          calypso_selected;       /**< AID 1TIC.ICA accepted. */
@@ -64,6 +77,16 @@ typedef struct MobibDump {
     bool          holder_ext_present;
     uint8_t       holder_ext[MOBIB_HOLDER_EXT_RECS][MOBIB_HOLDER_EXT_REC_SZ];
     uint8_t       holder_ext_len[MOBIB_HOLDER_EXT_RECS];
+
+    /* Opportunistic dump of every file we could SELECT by path, so the
+     * Deep scan section can surface them. Unused slots have file_id=0. */
+    size_t         extra_count;
+    MobibExtraFile extras[MOBIB_EXTRA_FILES];
+
+    /* Optional secondary applications we tried to SELECT by AID. */
+    bool           has_mpp;      /**< Parking app (AID 3MTR.ICA / 1MPP). */
+    bool           has_rt2;      /**< Transport v2 (AID 3TCW.ICA).       */
+    bool           has_eticket;  /**< ETicket application.               */
 } MobibDump;
 
 typedef enum {

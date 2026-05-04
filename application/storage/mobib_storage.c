@@ -67,6 +67,34 @@ static bool mobib_storage_write_records(FlipperFormat* ff, const MobibDump* dump
     const uint32_t count = dump->record_count;
     if(!flipper_format_write_uint32(ff, "Records", &count, 1)) return false;
 
+    /* Deep-scan secondary applications. */
+    const uint32_t mpp = dump->has_mpp     ? 1 : 0;
+    const uint32_t rt2 = dump->has_rt2     ? 1 : 0;
+    const uint32_t et  = dump->has_eticket ? 1 : 0;
+    if(!flipper_format_write_uint32(ff, "AppMpp",     &mpp, 1)) return false;
+    if(!flipper_format_write_uint32(ff, "AppRt2",     &rt2, 1)) return false;
+    if(!flipper_format_write_uint32(ff, "AppEticket", &et,  1)) return false;
+
+    /* Deep-scan path-selected extras: stored as parallel keys so the
+     * loader can iterate without a registry. */
+    const uint32_t ex_count = dump->extra_count;
+    if(!flipper_format_write_uint32(ff, "ExtraFiles", &ex_count, 1)) return false;
+    for(size_t i = 0; i < dump->extra_count; ++i) {
+        const MobibExtraFile* e = &dump->extras[i];
+        char k[24];
+
+        snprintf(k, sizeof(k), "Ex%02zu_Id", i);
+        const uint32_t fid = e->file_id;
+        if(!flipper_format_write_uint32(ff, k, &fid, 1)) return false;
+
+        snprintf(k, sizeof(k), "Ex%02zu_Label", i);
+        if(!flipper_format_write_string_cstr(ff, k, e->label)) return false;
+
+        snprintf(k, sizeof(k), "Ex%02zu_Data", i);
+        if(e->len > 0 && !flipper_format_write_hex(ff, k, e->data, e->len))
+            return false;
+    }
+
     /* Path-selected HOLDER_EXTENDED file. Persisted as a single hex blob
      * since the records have no schema other than concatenation. */
     if(dump->holder_ext_present) {
@@ -246,6 +274,48 @@ bool mobib_storage_load_dump(const char* path, MobibDump* dump) {
          * fields (Rec00_SFI etc.) come after. */
         uint32_t rec_count = 0;
         flipper_format_read_uint32(ff, "Records", &rec_count, 1);
+
+        /* Deep-scan apps. Ignore failures — older dumps predate them. */
+        uint32_t flag = 0;
+        if(flipper_format_read_uint32(ff, "AppMpp",     &flag, 1)) dump->has_mpp     = flag != 0;
+        if(flipper_format_read_uint32(ff, "AppRt2",     &flag, 1)) dump->has_rt2     = flag != 0;
+        if(flipper_format_read_uint32(ff, "AppEticket", &flag, 1)) dump->has_eticket = flag != 0;
+
+        /* Deep-scan extras — optional block. */
+        uint32_t ex_count = 0;
+        if(flipper_format_read_uint32(ff, "ExtraFiles", &ex_count, 1)) {
+            if(ex_count > MOBIB_EXTRA_FILES) ex_count = MOBIB_EXTRA_FILES;
+            for(uint32_t i = 0; i < ex_count; ++i) {
+                MobibExtraFile* e = &dump->extras[dump->extra_count];
+                char k[24];
+
+                snprintf(k, sizeof(k), "Ex%02u_Id", (unsigned)i);
+                uint32_t fid = 0;
+                if(!flipper_format_read_uint32(ff, k, &fid, 1)) continue;
+                e->file_id = (uint16_t)fid;
+
+                snprintf(k, sizeof(k), "Ex%02u_Label", (unsigned)i);
+                FuriString* lab = furi_string_alloc();
+                if(flipper_format_read_string(ff, k, lab)) {
+                    const size_t n = furi_string_size(lab);
+                    const size_t cap = sizeof(e->label) - 1;
+                    const size_t c = n < cap ? n : cap;
+                    memcpy(e->label, furi_string_get_cstr(lab), c);
+                    e->label[c] = '\0';
+                }
+                furi_string_free(lab);
+
+                snprintf(k, sizeof(k), "Ex%02u_Data", (unsigned)i);
+                uint32_t dl = 0;
+                if(flipper_format_get_value_count(ff, k, &dl) && dl > 0) {
+                    if(dl > sizeof(e->data)) dl = sizeof(e->data);
+                    if(flipper_format_read_hex(ff, k, e->data, dl)) {
+                        e->len = (uint8_t)dl;
+                    }
+                }
+                dump->extra_count++;
+            }
+        }
 
         /* HolderExt1 / HolderExt2 — best effort. */
         uint32_t ext_present = 0;

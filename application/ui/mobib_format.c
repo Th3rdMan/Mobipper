@@ -13,6 +13,7 @@
 #include "../calypso/calypso_event.h"
 #include "../calypso/calypso_contract.h"
 #include "../calypso/calypso_stations.h"
+#include "../calypso/calypso_bus.h"
 #include "../calypso/calypso_sfi.h"
 #include "../calypso/calypso_holder.h"
 
@@ -27,6 +28,7 @@ const char* mobib_section_title(MobibSection s) {
     case MobibSectionJourneys:  return "Journeys";
     case MobibSectionRecords:   return "Records";
     case MobibSectionFci:       return "FCI";
+    case MobibSectionDeep:      return "Deep scan";
     default:                    return "?";
     }
 }
@@ -314,16 +316,39 @@ static void format_journeys(const MobibDump* d, FuriString* s) {
             }
             furi_string_cat_str(s, "\n");
 
-            /* Try station lookup as a separate line. */
-            const CalypsoMetroStation* st =
-                calypso_metro_station_lookup_id(e->location_id);
-            if(st) {
-                furi_string_cat_printf(s, "  %s · %s\n", st->line, st->name);
-            } else if(e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus) {
-                furi_string_cat_printf(s, "  stop %u\n", e->location_id_bus);
-            } else if(e->location_id) {
-                furi_string_cat_printf(s, "  loc %lu\n",
-                    (unsigned long)e->location_id);
+            /* Try resolvers in order: bus stop (STIB DB, most of the hits),
+             * then metro station (smaller, higher-confidence table), then
+             * fall back to the raw location code. */
+            bool resolved = false;
+
+            if(e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus &&
+               e->flags & CALYPSO_EVENT_HAS_ROUTE) {
+                /* zoobab/mobib-extractor: bus line = low 7 bits of ROUTE_NUMBER. */
+                const uint16_t bus_line = e->route_number & 0x7F;
+                const CalypsoBusStop* bs =
+                    calypso_bus_stop_lookup(bus_line, e->location_id_bus);
+                if(bs) {
+                    furi_string_cat_printf(s, "  %s\n", bs->name);
+                    resolved = true;
+                }
+            }
+
+            if(!resolved) {
+                const CalypsoMetroStation* st =
+                    calypso_metro_station_lookup_id(e->location_id);
+                if(st) {
+                    furi_string_cat_printf(s, "  %s \xc2\xb7 %s\n", st->line, st->name);
+                    resolved = true;
+                }
+            }
+
+            if(!resolved) {
+                if(e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus) {
+                    furi_string_cat_printf(s, "  stop %u\n", e->location_id_bus);
+                } else if(e->location_id) {
+                    furi_string_cat_printf(s, "  loc %lu\n",
+                        (unsigned long)e->location_id);
+                }
             }
         }
 
@@ -425,6 +450,50 @@ static void format_fci(const MobibDump* d, FuriString* s) {
     if(d->fci_len % 8 != 0) furi_string_cat_str(s, "\n");
 }
 
+/* ------------------------------- Deep scan --------------------------- */
+
+static void format_deep(const MobibDump* d, FuriString* s) {
+    append_divider(s, "DEEP SCAN");
+
+    furi_string_cat_str(s, "Apps present:\n");
+    furi_string_cat_printf(
+        s, "  1TIC.ICA  %s\n", d->calypso_selected ? "yes" : "no");
+    furi_string_cat_printf(
+        s, "  3MTR.ICA  %s\n", d->has_mpp     ? "yes" : "-");
+    furi_string_cat_printf(
+        s, "  3TCW.ICA  %s\n", d->has_rt2     ? "yes" : "-");
+    furi_string_cat_printf(
+        s, "  2TIC.ICA  %s\n", d->has_eticket ? "yes" : "-");
+
+    furi_string_cat_str(s, "\nExtra files:\n");
+    if(d->extra_count == 0) {
+        furi_string_cat_str(s, "  (none readable)\n");
+    } else {
+        for(size_t i = 0; i < d->extra_count; ++i) {
+            const MobibExtraFile* e = &d->extras[i];
+            furi_string_cat_printf(
+                s, "  %s (0x%04X, %uB)\n", e->label, e->file_id, e->len);
+            const size_t n = e->len < 12 ? e->len : 12;
+            furi_string_cat_str(s, "    ");
+            for(size_t b = 0; b < n; ++b) {
+                furi_string_cat_printf(s, "%02X", e->data[b]);
+                if(b + 1 < n) furi_string_cat_str(s, " ");
+            }
+            if(e->len > n) furi_string_cat_str(s, "...");
+            furi_string_cat_str(s, "\n");
+        }
+    }
+
+    furi_string_cat_str(s,
+        "\nNote: writes to any\n"
+        "Calypso file require\n"
+        "issuer keys held by\n"
+        "STIB/SNCB/TEC/De Lijn\n"
+        "in a hardware SAM.\n"
+        "Cannot be extracted\n"
+        "from the card.\n");
+}
+
 /* ------------------------------- public ----------------------------- */
 
 void mobib_format_section(
@@ -444,6 +513,7 @@ void mobib_format_section(
     case MobibSectionJourneys:  format_journeys (dump, out); break;
     case MobibSectionRecords:   format_records  (dump, out); break;
     case MobibSectionFci:       format_fci      (dump, out); break;
+    case MobibSectionDeep:      format_deep     (dump, out); break;
     default: break;
     }
 }

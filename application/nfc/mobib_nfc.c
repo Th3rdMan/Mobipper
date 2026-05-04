@@ -110,6 +110,68 @@ static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dum
                 }
             }
         }
+
+        /* Deep probe: try a list of path-selected Calypso files metrodroid
+         * documents (ICC / ID / AID / DISPLAY / TICKETING_HOLDER / ...).
+         * We read record 1 of each and stash whatever comes back. Reads
+         * protected by a Secure Session return SW 6982 and are silently
+         * skipped — we never learn those keys. */
+        static const struct {
+            const char* label;
+            uint16_t    file_id;
+        } kExtras[] = {
+            {"ICC",              0x0002},
+            {"ID",               0x0003},
+            {"AIDfile",          0x3F04},
+            {"DISPLAY",          0x2F10},
+            {"TICKETING_HOLDER", 0x2002},
+            {"TICKETING_AID",    0x2004},
+            {"EP_AID",           0x1004},
+            {"ETICKET_AID",      0x8004},
+        };
+
+        for(size_t k = 0; k < sizeof(kExtras) / sizeof(kExtras[0]); ++k) {
+            if(dump->extra_count >= MOBIB_EXTRA_FILES) break;
+            if(!calypso_select_file_id(ctx, kExtras[k].file_id)) continue;
+
+            MobibExtraFile* e = &dump->extras[dump->extra_count];
+            size_t len = 0;
+            if(!calypso_read_record_current(
+                   ctx, 1, e->data, sizeof(e->data), &len)) continue;
+
+            e->file_id = kExtras[k].file_id;
+            e->len     = (uint8_t)len;
+            const size_t lbl = strlen(kExtras[k].label);
+            memcpy(e->label, kExtras[k].label,
+                   lbl < sizeof(e->label) ? lbl + 1 : sizeof(e->label) - 1);
+            dump->extra_count++;
+        }
+
+        /* Now re-SELECT our main AID so any subsequent reads still work
+         * the way the SFI walk assumes. Ignore the outcome — we're done. */
+        calypso_select_aid(
+            ctx, CALYPSO_AID, CALYPSO_AID_LEN, NULL, 0, NULL);
+    }
+
+    /* Secondary Calypso applications. Each SELECT is an independent
+     * probe; a present app doesn't mean its records are readable without
+     * keys, but proving the app exists is already useful. */
+    {
+        /* "3MTR.ICA" — Calypso Parking (MPP). */
+        static const uint8_t kMpp[8] = {0x33,0x4D,0x54,0x52,0x2E,0x49,0x43,0x41};
+        if(calypso_select_aid(ctx, kMpp, sizeof(kMpp), NULL, 0, NULL)) {
+            dump->has_mpp = true;
+        }
+        /* "3TCW.ICA" — Calypso Transport v2 (RT2). */
+        static const uint8_t kRt2[8] = {0x33,0x54,0x43,0x57,0x2E,0x49,0x43,0x41};
+        if(calypso_select_aid(ctx, kRt2, sizeof(kRt2), NULL, 0, NULL)) {
+            dump->has_rt2 = true;
+        }
+        /* "2TIC.ICA" — alternate ticketing sometimes referred to as ETicket. */
+        static const uint8_t kEt[8] = {0x32,0x54,0x49,0x43,0x2E,0x49,0x43,0x41};
+        if(calypso_select_aid(ctx, kEt, sizeof(kEt), NULL, 0, NULL)) {
+            dump->has_eticket = true;
+        }
     }
 
     calypso_ctx_free(ctx);

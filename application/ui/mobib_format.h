@@ -17,6 +17,7 @@ typedef enum {
     MobibSectionJourneys,
     MobibSectionRecords,
     MobibSectionFci,
+    MobibSectionDeep,
     MobibSectionCount,
 } MobibSection;
 

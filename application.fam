@@ -19,6 +19,7 @@ App(
         "application/calypso/calypso_date.c",
         "application/calypso/calypso_event.c",
         "application/calypso/calypso_stations.c",
+        "application/calypso/calypso_bus.c",
         "application/calypso/calypso_contract.c",
         "application/calypso/calypso_sfi.c",
         "application/calypso/calypso_holder.c",
