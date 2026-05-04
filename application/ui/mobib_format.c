@@ -68,12 +68,16 @@ static void format_overview(const MobibDump* d, FuriString* s) {
     CalypsoEnvironment env;
     bool have_env = parse_env(d, &env);
     if(have_env) {
-        furi_string_cat_printf(
-            s, "Issued by\n  %s\n",
-            env.country_name ? env.country_name : "?");
-        furi_string_cat_printf(
-            s, "Network\n  %s\n",
-            env.network_name ? env.network_name : "?");
+        if(env.country_name) {
+            furi_string_cat_printf(s, "Issued by\n  %s\n", env.country_name);
+        } else {
+            furi_string_cat_printf(s, "Country  %u\n", env.country_code);
+        }
+        if(env.network_name) {
+            furi_string_cat_printf(s, "Network\n  %s\n", env.network_name);
+        } else {
+            furi_string_cat_printf(s, "Network  0x%03X\n", env.network_id);
+        }
         furi_string_cat_printf(s, "App version  %u\n", env.version);
         if(env.validity_end_year) {
             furi_string_cat_printf(
@@ -128,6 +132,20 @@ static void format_holder(const MobibDump* d, FuriString* s) {
                 flat_len += n;
             }
         }
+
+        /* Dump the raw bytes so the user can verify alignment / encoding
+         * variants from a screenshot. metrodroid declares 464 bits (58
+         * bytes); real cards return 64 bytes, so the name field probably
+         * extends or another unknown field exists. We split the dump in
+         * three chunks so the user can read it without a side-scroll. */
+        furi_string_cat_printf(s, "Raw (%zuB):\n", flat_len);
+        for(size_t i = 0; i < flat_len; ++i) {
+            if(i % 8 == 0) furi_string_cat_printf(s, "%02zu ", i);
+            furi_string_cat_printf(s, "%02X", flat[i]);
+            if((i + 1) % 8 == 0) furi_string_cat_str(s, "\n");
+            else                 furi_string_cat_str(s, " ");
+        }
+        furi_string_cat_str(s, "\n");
 
         CalypsoHolder h;
         if(calypso_holder_parse(flat, flat_len, &h) && h.valid) {
@@ -201,11 +219,15 @@ static void format_contracts(const MobibDump* d, FuriString* s) {
                 c.sale_year, c.sale_month, c.sale_day);
         }
         if(c.flags & CALYPSO_CONTRACT_HAS_DURATION) {
+            /* metrodroid documents 0/1/2; 3 is empirical from a Belgian
+             * Railpass and appears to mean "years" (e.g. 12 months written
+             * as 1 year, 30 months written with units=2). */
             const char* unit = "?";
             switch(c.duration_units) {
             case 0: unit = "days";   break;
             case 1: unit = "weeks";  break;
             case 2: unit = "months"; break;
+            case 3: unit = "years";  break;
             }
             furi_string_cat_printf(s, "  Length %u %s\n", c.duration, unit);
         }

@@ -10,32 +10,36 @@
 
 /* ------------------------------ tables ----------------------------- */
 
+/* The 12-bit country field is BCD-encoded: the four nibbles spell out
+ * the ISO 3166-1 numeric code as a string. Belgium "056" lives in 12
+ * bits as 0x056 — i.e. when read MSB-first as an integer it equals
+ * decimal 86, NOT decimal 56. We therefore compare against the raw
+ * value (0x0NN), not the ISO numeric. */
 static const struct {
-    uint16_t    code;
+    uint16_t    raw;        /**< 12-bit raw value, identical to BCD digits. */
     const char* name;
 } kCountries[] = {
-    {56,  "Belgium"},
-    {250, "France"},
-    {528, "Netherlands"},
-    {380, "Italy"},
-    {0,   NULL},
+    {0x056, "Belgium"},
+    {0x250, "France"},
+    {0x528, "Netherlands"},
+    {0x380, "Italy"},
+    {0,     NULL},
 };
 
 static const struct {
-    uint16_t    country;
-    uint16_t    network;
+    uint16_t    country;    /**< raw 12-bit value from kCountries. */
+    uint16_t    network;    /**< raw 12-bit value. */
     const char* name;
 } kNetworks[] = {
-    /* Belgium 056 / 0x001 — MOBIB common interop scheme used by STIB,
-     * De Lijn, TEC and SNCB. Every Belgian MOBIB card shares this ID
-     * (full 24-bit NetworkId 0x056001 — see metrodroid). */
-    {56, 0x001, "MOBIB"},
-    {0,  0,    NULL},
+    /* Full 24-bit NetworkId 0x056001 — see metrodroid MobibTransitData
+     * MOBIB_NETWORK_ID. Used by STIB, De Lijn, TEC and SNCB alike. */
+    {0x056, 0x001, "MOBIB"},
+    {0,     0,     NULL},
 };
 
 static const char* lookup_country(uint16_t code) {
     for(size_t i = 0; kCountries[i].name; ++i) {
-        if(kCountries[i].code == code) return kCountries[i].name;
+        if(kCountries[i].raw == code) return kCountries[i].name;
     }
     return NULL;
 }
