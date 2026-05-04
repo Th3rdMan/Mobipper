@@ -7,6 +7,7 @@
 #include "../nfc/mobib_nfc.h"
 #include "../storage/mobib_storage.h"
 #include "../calypso/calypso_fci.h"
+#include "../calypso/calypso_env.h"
 
 #include <notification/notification_messages.h>
 
@@ -122,6 +123,31 @@ static void mobib_scan_render_dump(MobibApp* app, const MobibDump* d) {
 
     mobib_scan_append_pupi(body, &d->card);
     mobib_scan_append_fci(body, d);
+
+    /* Environment record (SFI 7, record 1) — country, network, expiry. */
+    for(size_t i = 0; i < d->record_count; ++i) {
+        const MobibRecord* r = &d->records[i];
+        if(r->sfi != 0x07 || r->record != 1) continue;
+        CalypsoEnvironment env;
+        if(!calypso_env_parse(r->data, r->len, &env)) break;
+        if(env.country_name) {
+            furi_string_cat_printf(body, "Country: %s\n", env.country_name);
+        } else {
+            furi_string_cat_printf(body, "Country: %u\n", env.country_code);
+        }
+        if(env.network_name) {
+            furi_string_cat_printf(body, "Network: %s\n", env.network_name);
+        } else {
+            furi_string_cat_printf(body, "Network: 0x%03X\n", env.network_id);
+        }
+        if(env.validity_end_year) {
+            furi_string_cat_printf(
+                body, "Expires: %04u-%02u-%02u\n",
+                env.validity_end_year, env.validity_end_month, env.validity_end_day);
+        }
+        break;
+    }
+
     furi_string_cat_printf(body, "Records: %u\n", (unsigned)d->record_count);
 
     if(s_saved_path && furi_string_size(s_saved_path) > 0) {
