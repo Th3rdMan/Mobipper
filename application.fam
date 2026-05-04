@@ -20,6 +20,7 @@ App(
         "application/calypso/calypso_event.c",
         "application/calypso/calypso_stations.c",
         "application/calypso/calypso_contract.c",
+        "application/calypso/calypso_sfi.c",
         "application/nfc/mobib_nfc.c",
         "application/storage/mobib_storage.c",
         "application/ui/mobib_format.c",
