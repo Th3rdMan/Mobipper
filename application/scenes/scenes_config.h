@@ -10,4 +10,5 @@
  */
 
 ADD_SCENE(mobib, start, Start)
+ADD_SCENE(mobib, scan,  Scan)
 ADD_SCENE(mobib, about, About)

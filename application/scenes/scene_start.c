@@ -36,7 +36,7 @@ bool mobib_scene_start_on_event(void* context, SceneManagerEvent event) {
         scene_manager_set_scene_state(app->scene_manager, MobibSceneStart, event.event);
         switch(event.event) {
         case StartSubmenuRead:
-            /* M1 will wire the NFC scan scene here. */
+            scene_manager_next_scene(app->scene_manager, MobibSceneScan);
             return true;
         case StartSubmenuAbout:
             scene_manager_next_scene(app->scene_manager, MobibSceneAbout);

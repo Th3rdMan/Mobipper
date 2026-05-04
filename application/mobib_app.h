@@ -18,6 +18,7 @@
 #include <notification/notification.h>
 
 #include "scenes/scenes.h"
+#include "nfc/mobib_nfc.h"
 
 /** Identifiers of every persistent view registered on the dispatcher. */
 typedef enum {
@@ -35,4 +36,7 @@ typedef struct {
     /* Reusable view modules — one of each is enough for the whole app. */
     Submenu*           submenu;
     Widget*            widget;
+
+    /* Scenes that need NFC borrow this; allocated lazily. */
+    MobibNfc*          nfc;
 } MobibApp;
