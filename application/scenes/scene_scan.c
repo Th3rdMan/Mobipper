@@ -1,7 +1,6 @@
 /*
- * MOBIB — Scan scene: poll for an ISO 14443-B card and display the
- * activation parameters. Stepping stone for milestone M2 (Calypso AID
- * select + record dump).
+ * MOBIB — Scan scene: poll for a card, run a Calypso dump and render
+ * a scrollable summary of every record we managed to read.
  */
 
 #include "../mobib_app.h"
@@ -10,21 +9,22 @@
 #include <notification/notification_messages.h>
 
 typedef enum {
-    ScanCustomEventDetected = 0x100,
+    ScanCustomEventDumped = 0x100,
     ScanCustomEventError,
 } ScanCustomEvent;
 
-/* Worker thread → GUI thread bridge. The poller callback runs on the NFC
- * worker; we copy the activation snapshot into this static buffer and
- * post a custom event. The scene reads it from the GUI thread. */
-static MobibCardInfo s_last_card;
+/* The poller callback runs on the NFC worker thread and hands us a
+ * pointer that becomes invalid as soon as the wrapper is stopped, so we
+ * stash a private copy here for the GUI thread to consume. The dump is
+ * ~1.6 KB which is too large for the GUI stack. */
+static MobibDump s_dump;
 
-static void mobib_scan_nfc_cb(MobibNfcEvent event, const MobibCardInfo* info, void* ctx) {
+static void mobib_scan_nfc_cb(MobibNfcEvent event, const MobibDump* dump, void* ctx) {
     MobibApp* app = ctx;
 
-    if(event == MobibNfcEventDetected && info) {
-        s_last_card = *info;
-        view_dispatcher_send_custom_event(app->view_dispatcher, ScanCustomEventDetected);
+    if(event == MobibNfcEventDumped && dump) {
+        s_dump = *dump;
+        view_dispatcher_send_custom_event(app->view_dispatcher, ScanCustomEventDumped);
     } else {
         view_dispatcher_send_custom_event(app->view_dispatcher, ScanCustomEventError);
     }
@@ -40,28 +40,45 @@ static void mobib_scan_render_waiting(MobibApp* app) {
         "Hold MOBIB card\nflat against the\nback of the Flipper");
 }
 
-static void mobib_scan_render_card(MobibApp* app, const MobibCardInfo* c) {
-    Widget* w = app->widget;
-    widget_reset(w);
-
-    widget_add_text_box_element(
-        w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#Card detected\e#", false);
-
-    FuriString* body = furi_string_alloc();
-
-    furi_string_cat_str(body, "PUPI: ");
+static void mobib_scan_append_pupi(FuriString* body, const MobibCardInfo* c) {
+    furi_string_cat_str(body, "PUPI ");
     for(size_t i = 0; i < c->pupi_len; ++i) {
         furi_string_cat_printf(body, "%02X", c->pupi[i]);
     }
     furi_string_cat_str(body, "\n");
+}
 
-    furi_string_cat_printf(
-        body, "AppData: %02X %02X %02X %02X\n",
-        c->app_data[0], c->app_data[1], c->app_data[2], c->app_data[3]);
+static void mobib_scan_append_records(FuriString* body, const MobibDump* d) {
+    for(size_t i = 0; i < d->record_count; ++i) {
+        const MobibRecord* r = &d->records[i];
+        furi_string_cat_printf(body, "SFI%02X r%u (%uB)\n", r->sfi, r->record, r->len);
+        const size_t preview = r->len < 12 ? r->len : 12;
+        for(size_t b = 0; b < preview; ++b) {
+            furi_string_cat_printf(body, "%02X ", r->data[b]);
+        }
+        if(r->len > preview) furi_string_cat_str(body, "…");
+        furi_string_cat_str(body, "\n");
+    }
+}
 
+static void mobib_scan_render_dump(MobibApp* app, const MobibDump* d) {
+    Widget* w = app->widget;
+    widget_reset(w);
+
+    const char* title = d->calypso_selected ? "\e#Calypso card\e#" : "\e#Type-B card\e#";
+    widget_add_text_box_element(w, 0, 0, 128, 14, AlignCenter, AlignTop, title, false);
+
+    FuriString* body = furi_string_alloc();
+
+    mobib_scan_append_pupi(body, &d->card);
     furi_string_cat_printf(
-        body, "ISO14443-4: %s\n", c->supports_iso14443_4 ? "yes" : "no");
-    furi_string_cat_printf(body, "FSCImax: %u B", (unsigned)c->frame_size_max);
+        body, "AID 1TIC.ICA: %s\n", d->calypso_selected ? "selected" : "no");
+    furi_string_cat_printf(body, "Records: %u\n", (unsigned)d->record_count);
+
+    if(d->record_count > 0) {
+        furi_string_cat_str(body, "\n");
+        mobib_scan_append_records(body, d);
+    }
 
     widget_add_text_scroll_element(w, 0, 16, 128, 48, furi_string_get_cstr(body));
     furi_string_free(body);
@@ -84,13 +101,12 @@ bool mobib_scene_scan_on_event(void* context, SceneManagerEvent event) {
     if(event.type != SceneManagerEventTypeCustom) return false;
 
     switch(event.event) {
-    case ScanCustomEventDetected:
+    case ScanCustomEventDumped:
         mobib_nfc_stop(app->nfc);
         notification_message(app->notifications, &sequence_success);
-        mobib_scan_render_card(app, &s_last_card);
+        mobib_scan_render_dump(app, &s_dump);
         return true;
     case ScanCustomEventError:
-        /* Activation hiccup — keep waiting silently. */
         return true;
     default:
         return false;

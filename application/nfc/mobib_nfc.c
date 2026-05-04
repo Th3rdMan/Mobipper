@@ -3,13 +3,32 @@
  */
 
 #include "mobib_nfc.h"
+#include "../calypso/calypso.h"
 
 #include <furi.h>
 #include <nfc/nfc.h>
 #include <nfc/nfc_poller.h>
 #include <nfc/protocols/nfc_protocol.h>
 #include <nfc/protocols/iso14443_3b/iso14443_3b.h>
-#include <nfc/protocols/iso14443_3b/iso14443_3b_poller.h>
+#include <nfc/protocols/iso14443_4b/iso14443_4b.h>
+#include <nfc/protocols/iso14443_4b/iso14443_4b_poller.h>
+
+#define TAG "MobibNfc"
+
+/* SFIs we attempt to read on every card. The list is intentionally broad
+ * — Calypso cards ignore unknown SFIs with SW=6A82/6A83, so a brute walk
+ * is cheap and gives us the union of every variant out there. The
+ * Belgian MOBIB family is documented to use a subset of these. */
+static const uint8_t MOBIB_SFI_PROBE[] = {
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+    0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+};
+
+/* Records to try per SFI. Calypso EFs are typically 1..N records; we cap
+ * here to keep the dump bounded and fast. */
+#define MOBIB_RECORDS_PER_SFI 4
 
 struct MobibNfc {
     Nfc*             nfc;
@@ -19,7 +38,9 @@ struct MobibNfc {
     bool             running;
 };
 
-static void mobib_nfc_fill_info(const Iso14443_3bData* data, MobibCardInfo* out) {
+/* ------------------------------------------------------------ helpers */
+
+static void mobib_nfc_fill_card_info(const Iso14443_3bData* data, MobibCardInfo* out) {
     memset(out, 0, sizeof(*out));
 
     size_t uid_len = 0;
@@ -41,25 +62,74 @@ static void mobib_nfc_fill_info(const Iso14443_3bData* data, MobibCardInfo* out)
     out->fwt_fc_max          = iso14443_3b_get_fwt_fc_max(data);
 }
 
+static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dump) {
+    CalypsoCtx* ctx = calypso_ctx_alloc();
+    if(!ctx) return;
+    calypso_ctx_bind(ctx, poller);
+
+    dump->fci_len = 0;
+    dump->calypso_selected = calypso_select_aid(
+        ctx, CALYPSO_AID, CALYPSO_AID_LEN, dump->fci, sizeof(dump->fci), &dump->fci_len);
+
+    if(dump->calypso_selected) {
+        for(size_t i = 0; i < sizeof(MOBIB_SFI_PROBE); ++i) {
+            const uint8_t sfi = MOBIB_SFI_PROBE[i];
+            for(uint8_t rec = 1; rec <= MOBIB_RECORDS_PER_SFI; ++rec) {
+                if(dump->record_count >= MOBIB_DUMP_RECORD_MAX) break;
+
+                MobibRecord* slot = &dump->records[dump->record_count];
+                size_t       len  = 0;
+                if(!calypso_read_record(
+                       ctx, sfi, rec, slot->data, sizeof(slot->data), &len)) {
+                    /* SW != 9000: file/record absent. Move to next SFI on
+                     * the very first record; otherwise the EF exists but
+                     * we've walked past its last record. */
+                    if(rec == 1) break;
+                    break;
+                }
+                slot->sfi    = sfi;
+                slot->record = rec;
+                slot->len    = (uint8_t)len;
+                dump->record_count++;
+            }
+            if(dump->record_count >= MOBIB_DUMP_RECORD_MAX) break;
+        }
+    }
+
+    calypso_ctx_free(ctx);
+}
+
+/* Static dump buffer — too large for the poller-thread stack. The wrapper
+ * is single-shot per `mobib_nfc_start` so contention is impossible. */
+static MobibDump s_dump;
+
+/* ----------------------------------------------------------- callback */
+
 static NfcCommand mobib_nfc_poller_cb(NfcGenericEvent event, void* context) {
     MobibNfc* self = context;
     furi_assert(self);
-    furi_assert(event.protocol == NfcProtocolIso14443_3b);
+    furi_assert(event.protocol == NfcProtocolIso14443_4b);
 
-    const Iso14443_3bPollerEvent* evt = event.event_data;
+    const Iso14443_4bPollerEvent* evt = event.event_data;
 
-    if(evt->type == Iso14443_3bPollerEventTypeReady) {
-        const Iso14443_3bData* data = nfc_poller_get_data(self->poller);
-        MobibCardInfo info;
-        mobib_nfc_fill_info(data, &info);
+    if(evt->type == Iso14443_4bPollerEventTypeReady) {
+        Iso14443_4bPoller*     poller_4b = event.instance;
+        const Iso14443_4bData* data_4b   = nfc_poller_get_data(self->poller);
+        const Iso14443_3bData* data_3b   = iso14443_4b_get_base_data(data_4b);
 
-        if(self->callback) self->callback(MobibNfcEventDetected, &info, self->context);
+        memset(&s_dump, 0, sizeof(s_dump));
+        mobib_nfc_fill_card_info(data_3b, &s_dump.card);
+        mobib_nfc_run_calypso_dump(poller_4b, &s_dump);
+
+        if(self->callback) self->callback(MobibNfcEventDumped, &s_dump, self->context);
         return NfcCommandStop;
     }
 
     /* Activation error — keep polling so the user can retry by tapping again. */
     return NfcCommandContinue;
 }
+
+/* ------------------------------------------------------------ public */
 
 MobibNfc* mobib_nfc_alloc(void) {
     MobibNfc* self = malloc(sizeof(MobibNfc));
@@ -83,7 +153,7 @@ void mobib_nfc_start(MobibNfc* self, MobibNfcCallback callback, void* context) {
     self->callback = callback;
     self->context  = context;
 
-    self->poller = nfc_poller_alloc(self->nfc, NfcProtocolIso14443_3b);
+    self->poller = nfc_poller_alloc(self->nfc, NfcProtocolIso14443_4b);
     nfc_poller_start(self->poller, mobib_nfc_poller_cb, self);
     self->running = true;
 }
