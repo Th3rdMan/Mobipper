@@ -6,6 +6,7 @@
 #include "../mobib_app.h"
 #include "../nfc/mobib_nfc.h"
 #include "../storage/mobib_storage.h"
+#include "../calypso/calypso_fci.h"
 
 #include <notification/notification_messages.h>
 
@@ -63,18 +64,64 @@ static void mobib_scan_append_records(FuriString* body, const MobibDump* d) {
     }
 }
 
+static void mobib_scan_append_fci(FuriString* body, const MobibDump* d) {
+    if(!d->calypso_selected || d->fci_len == 0) {
+        furi_string_cat_str(body, "AID: not selected\n");
+        return;
+    }
+
+    CalypsoFci fci;
+    if(!calypso_fci_parse(d->fci, d->fci_len, &fci) || !fci.valid) {
+        furi_string_cat_str(body, "FCI: unparsed\n");
+        return;
+    }
+
+    if(fci.is_calypso_aid) {
+        furi_string_cat_str(body, "AID: 1TIC.ICA");
+        if(fci.is_mobib_extension) furi_string_cat_str(body, " (MOBIB)");
+        furi_string_cat_str(body, "\n");
+    } else {
+        furi_string_cat_str(body, "AID: ");
+        for(size_t i = 0; i < fci.df_name_len; ++i) {
+            furi_string_cat_printf(body, "%02X", fci.df_name[i]);
+        }
+        furi_string_cat_str(body, "\n");
+    }
+
+    if(fci.has_aid_extension) {
+        furi_string_cat_str(body, "Ext: ");
+        for(size_t i = 0; i < CALYPSO_AID_EXTENSION_LEN; ++i) {
+            furi_string_cat_printf(body, "%02X ", fci.aid_extension[i]);
+        }
+        furi_string_cat_str(body, "\n");
+    }
+
+    if(fci.app_serial_len > 0) {
+        furi_string_cat_str(body, "Serial ");
+        for(size_t i = 0; i < fci.app_serial_len; ++i) {
+            furi_string_cat_printf(body, "%02X", fci.app_serial[i]);
+        }
+        furi_string_cat_str(body, "\n");
+    }
+}
+
 static void mobib_scan_render_dump(MobibApp* app, const MobibDump* d) {
     Widget* w = app->widget;
     widget_reset(w);
 
-    const char* title = d->calypso_selected ? "\e#Calypso card\e#" : "\e#Type-B card\e#";
+    bool is_mobib = false;
+    if(d->calypso_selected && d->fci_len > 0) {
+        CalypsoFci fci;
+        if(calypso_fci_parse(d->fci, d->fci_len, &fci)) is_mobib = fci.is_mobib_extension;
+    }
+    const char* title = is_mobib ? "\e#MOBIB card\e#"
+                       : (d->calypso_selected ? "\e#Calypso card\e#" : "\e#Type-B card\e#");
     widget_add_text_box_element(w, 0, 0, 128, 14, AlignCenter, AlignTop, title, false);
 
     FuriString* body = furi_string_alloc();
 
     mobib_scan_append_pupi(body, &d->card);
-    furi_string_cat_printf(
-        body, "AID 1TIC.ICA: %s\n", d->calypso_selected ? "selected" : "no");
+    mobib_scan_append_fci(body, d);
     furi_string_cat_printf(body, "Records: %u\n", (unsigned)d->record_count);
 
     if(s_saved_path && furi_string_size(s_saved_path) > 0) {
