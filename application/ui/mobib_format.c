@@ -275,14 +275,9 @@ static void format_overview(const MobibDump* d, FuriString* s) {
         JourneyInfo j;
         journey_describe(&last, &j);
         const char* place = journey_place_name(&j);
-        if(place && strlen(place) <= 10) {
-            furi_string_cat_printf(s, "Dernier voyage : %s\n", place);
-        } else if(place) {
-            /* Long names would be cut at the screen edge. */
-            furi_string_cat_printf(s, "Dernier voyage :\n  %s\n", place);
-        } else {
-            furi_string_cat_str(s, "Dernier voyage :\n");
-        }
+        /* The label alone nearly fills the line: the stop goes below. */
+        furi_string_cat_str(s, "Derniere utilisation :\n");
+        if(place) furi_string_cat_printf(s, "  %s\n", place);
         if(last.event_year) {
             furi_string_cat_printf(
                 s, "%02u/%02u %02u:%02u",

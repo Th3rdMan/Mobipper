@@ -78,6 +78,15 @@ static MobibApp* mobib_app_alloc(void) {
     view_dispatcher_add_view(
         app->view_dispatcher, MobibViewTextBox, text_box_get_view(app->text_box));
 
+    app->browser_path = furi_string_alloc();
+    app->file_browser = file_browser_alloc(app->browser_path);
+    view_dispatcher_add_view(
+        app->view_dispatcher, MobibViewFileBrowser, file_browser_get_view(app->file_browser));
+
+    app->dialog_ex = dialog_ex_alloc();
+    view_dispatcher_add_view(
+        app->view_dispatcher, MobibViewDialogEx, dialog_ex_get_view(app->dialog_ex));
+
     app->dump_path   = furi_string_alloc();
     app->text_buffer = furi_string_alloc();
 
@@ -92,10 +101,15 @@ static void mobib_app_free(MobibApp* app) {
     view_dispatcher_remove_view(app->view_dispatcher, MobibViewSubmenu);
     view_dispatcher_remove_view(app->view_dispatcher, MobibViewWidget);
     view_dispatcher_remove_view(app->view_dispatcher, MobibViewTextBox);
+    view_dispatcher_remove_view(app->view_dispatcher, MobibViewFileBrowser);
+    view_dispatcher_remove_view(app->view_dispatcher, MobibViewDialogEx);
 
     submenu_free(app->submenu);
     widget_free(app->widget);
     text_box_free(app->text_box);
+    file_browser_free(app->file_browser);
+    furi_string_free(app->browser_path);
+    dialog_ex_free(app->dialog_ex);
 
     furi_string_free(app->dump_path);
     furi_string_free(app->text_buffer);

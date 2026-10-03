@@ -11,7 +11,10 @@ Il suffit de poser la carte contre le dos du Flipper : l'application lit tous le
 
 > Construit sur la base de [flipper-mobib](https://github.com/i12bp8/flipper-mobib) par **i12bp8**, traduit en français, réorganisé et enrichi.
 
-<p align="center"><img src="docs/screenshots/menu.png" width="384" alt="Menu principal"></p>
+<p align="center">
+  <img src="docs/screenshots/apps_menu.png" width="384" alt="Icône dans Apps → NFC">
+  <img src="docs/screenshots/menu.png" width="384" alt="Menu principal">
+</p>
 
 ---
 
@@ -36,6 +39,10 @@ Il suffit de poser la carte contre le dos du Flipper : l'application lit tous le
 - 🗑️ **Suppression des sauvegardes**  
   Depuis le menu de la carte, avec écran de confirmation. Retour automatique à la liste des sauvegardes.
 
+- 🧊 **Plus de blocage sur « Sauvegardes »**  
+  La liste des fichiers et la confirmation sont intégrées à l'application au lieu de passer par le service Dialogs du système.  
+  Ce service ne gère qu'une liste à la fois : quand le menu Apps ou l'Archive l'occupait, l'application restait figée sur un écran vide.
+
 - 🚌 **Trajets lisibles**  
   Chaque validation est présentée clairement :
 
@@ -52,6 +59,9 @@ Il suffit de poser la carte contre le dos du Flipper : l'application lit tous le
 
 - 🎫 **Abonnements corrigés**  
   L'unité de durée utilisée par les cartes actuelles est interprétée en **mois** (et non en années), ce qui donne des durées et des dates de fin cohérentes.
+
+- 🪪 **Nouvelle icône**  
+  Carte sans contact (anneau + onde) dans le menu Apps → NFC, en remplacement de l'icône d'origine.
 
 - 🔎 **Sections détaillées**  
   Titulaire, Abonnements, Trajets, Enregistrements bruts, FCI et Analyse avancée (applications Calypso secondaires) restent accessibles depuis le menu de la carte.
@@ -74,7 +84,7 @@ Carte n. 1A2B3C4D
 Valable jusqu'au 12/05/2029
 
 Abonnement 31/10/2026
-Dernier voyage :
+Derniere utilisation :
   Place Reine Astrid
 02/10 17:26 - Tram 19
 
@@ -84,7 +94,7 @@ Dernier voyage :
 
 - **Titulaire** : nom, commune (code postal + nom), date de naissance (`Ne le` / `Nee le`). Chaque ligne n'apparaît que si la carte contient l'information.
 - **Abonnement** : date de fin estimée de l'abonnement le plus récent (date d'achat + durée − 1 jour). Les tickets Jump ne sont pas comptés. `(echu)` est ajouté si la date est dépassée.
-- **Dernier voyage** : le nom de l'arrêt n'apparaît que s'il est reconnu ; un nom long passe à la ligne suivante.
+- **Dernière utilisation** : dernière validation de la carte ; le nom de l'arrêt (ligne suivante) n'apparaît que s'il est reconnu.
 
 ---
 

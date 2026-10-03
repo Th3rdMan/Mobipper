@@ -1,61 +1,62 @@
 /*
  * MOBIB — Saved cards scene.
  *
- * Pops the system file browser scoped to `/ext/apps_data/mobib/dumps`
- * filtered to `.mobibdump` extensions. On selection, loads the dump
- * via `mobib_storage_load_dump` into the shared app state and pushes
- * `scene_card`. On cancel, pops back to start.
+ * Shows the app's own FileBrowser view scoped to `/ext/apps_data/mobib/dumps`
+ * and filtered to `.mobibdump`. The system Dialogs service is avoided on
+ * purpose: it serves one browser at a time, and when the Apps menu or Archive
+ * holds it the app blocked forever on a blank screen.
+ *
+ * Selecting a file loads it into the shared app state and pushes
+ * `scene_card`; Back in the dumps folder pops back to start.
  */
 
 #include "../mobib_app.h"
 #include "../storage/mobib_storage.h"
 
-#include <dialogs/dialogs.h>
+enum {
+    DumpsEventSelected = 0x200,
+};
+
+static void mobib_scene_dumps_browser_cb(void* context) {
+    MobibApp* app = context;
+    view_dispatcher_send_custom_event(app->view_dispatcher, DumpsEventSelected);
+}
 
 void mobib_scene_dumps_on_enter(void* context) {
     MobibApp* app = context;
 
-    DialogsApp* dialogs = furi_record_open(RECORD_DIALOGS);
-
-    DialogsFileBrowserOptions opts;
-    dialog_file_browser_set_basic_options(&opts, MOBIB_DUMP_EXT, NULL);
-    opts.base_path = MOBIB_DUMP_DIR;
-
-    FuriString* selected = furi_string_alloc();
     /* Preselect a file, not the folder: given a folder, the Momentum
      * browser parks the cursor on ".." and one OK leaves the dumps dir. */
-    FuriString* preselect = furi_string_alloc();
     if(furi_string_start_with_str(app->dump_path, MOBIB_DUMP_DIR "/")) {
-        furi_string_set(preselect, app->dump_path);
+        furi_string_set(app->browser_path, app->dump_path);
     } else {
-        mobib_storage_first_dump(preselect);
+        mobib_storage_first_dump(app->browser_path);
     }
 
-    const bool picked = dialog_file_browser_show(dialogs, selected, preselect, &opts);
-    furi_string_free(preselect);
-    furi_record_close(RECORD_DIALOGS);
+    file_browser_configure(
+        app->file_browser, MOBIB_DUMP_EXT, MOBIB_DUMP_DIR, true, true, NULL, true);
+    file_browser_set_callback(app->file_browser, mobib_scene_dumps_browser_cb, app);
+    file_browser_start(app->file_browser, app->browser_path);
 
-    if(picked) {
-        if(mobib_storage_load_dump(furi_string_get_cstr(selected), &app->dump)) {
-            app->dump_valid = true;
-            furi_string_set(app->dump_path, selected);
-            furi_string_free(selected);
-            scene_manager_next_scene(app->scene_manager, MobibSceneCard);
-            return;
-        }
-    }
-    furi_string_free(selected);
-
-    /* Either cancelled or load failed — drop back to start. */
-    scene_manager_previous_scene(app->scene_manager);
+    view_dispatcher_switch_to_view(app->view_dispatcher, MobibViewFileBrowser);
 }
 
 bool mobib_scene_dumps_on_event(void* context, SceneManagerEvent event) {
-    UNUSED(context);
-    UNUSED(event);
-    return false;
+    MobibApp* app = context;
+    if(event.type != SceneManagerEventTypeCustom || event.event != DumpsEventSelected) {
+        return false;
+    }
+
+    if(mobib_storage_load_dump(furi_string_get_cstr(app->browser_path), &app->dump)) {
+        app->dump_valid = true;
+        furi_string_set(app->dump_path, app->browser_path);
+        scene_manager_set_scene_state(app->scene_manager, MobibSceneCard, 0);
+        scene_manager_next_scene(app->scene_manager, MobibSceneCard);
+    }
+    return true;
 }
 
 void mobib_scene_dumps_on_exit(void* context) {
-    UNUSED(context);
+    MobibApp* app = context;
+    file_browser_stop(app->file_browser);
 }

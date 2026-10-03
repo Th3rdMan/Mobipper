@@ -16,6 +16,8 @@
 #include <gui/modules/submenu.h>
 #include <gui/modules/widget.h>
 #include <gui/modules/text_box.h>
+#include <gui/modules/file_browser.h>
+#include <gui/modules/dialog_ex.h>
 #include <notification/notification.h>
 
 #include "scenes/scenes.h"
@@ -26,6 +28,8 @@ typedef enum {
     MobibViewSubmenu,
     MobibViewWidget,
     MobibViewTextBox,
+    MobibViewFileBrowser,
+    MobibViewDialogEx,
 } MobibView;
 
 /** Global application state. Allocated once in `mobib_app_main`. */
@@ -39,6 +43,11 @@ typedef struct {
     Submenu*           submenu;
     Widget*            widget;
     TextBox*           text_box;
+    /* In-app file browser and confirm dialog: the shared Dialogs service
+     * can be held by the Apps menu or Archive, which froze the app. */
+    FileBrowser*       file_browser;
+    FuriString*        browser_path;
+    DialogEx*          dialog_ex;
 
     /* Scenes that need NFC borrow this; allocated lazily. */
     MobibNfc*          nfc;
