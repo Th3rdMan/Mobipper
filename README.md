@@ -7,6 +7,7 @@
 ![Firmware](https://img.shields.io/badge/Firmware-Momentum_mntm--012-orange)
 [![Author: Th3rd](https://img.shields.io/badge/github-Th3rdMan-181717?logo=github)](https://github.com/Th3rdMan)
 [![Based on: flipper-mobib](https://img.shields.io/badge/based_on-i12bp8%2Fflipper--mobib-555)](https://github.com/i12bp8/flipper-mobib)
+![Zone](https://img.shields.io/badge/Zone-Bruxelles_%7C_Belgique-yellow)
 
 **Mobipper** (MOBIB + Flipper) est une application [Flipper Zero](https://flipperzero.one/) qui lit et décode les cartes de transport belges **MOBIB** — la carte sans contact Calypso / ISO 14443-B partagée par la **STIB/MIVB**, la **SNCB/NMBS**, **De Lijn** et le **TEC**.  
 Il suffit de poser la carte contre le dos du Flipper : l'application lit tous les fichiers accessibles, décode les informations utiles (titulaire, abonnements, derniers trajets) et sauvegarde la lecture sur la carte SD.
@@ -14,9 +15,37 @@ Il suffit de poser la carte contre le dos du Flipper : l'application lit tous le
 > Construit sur la base de [flipper-mobib](https://github.com/i12bp8/flipper-mobib) par **i12bp8**, traduit en français, réorganisé et enrichi.
 
 <p align="center">
-  <img src="docs/screenshots/apps_menu.png" width="384" alt="Icône dans Apps → NFC">
-  <img src="docs/screenshots/menu.png" width="384" alt="Menu principal">
+  <img src="docs/screenshots/demo_01_apps.png" width="384" alt="Icône dans Apps → NFC">
+  <img src="docs/screenshots/demo_06_resume_1.png" width="384" alt="Résumé après lecture">
 </p>
+
+---
+
+## 📍 Zone d'utilisation
+
+La carte **MOBIB** est la carte de transport de la **Belgique** : elle n'intéressera que les utilisateurs de ces réseaux.
+
+| Opérateur | Zone | Prise en charge par Mobipper |
+|-----------|------|------------------------------|
+| **STIB / MIVB** | Bruxelles-Capitale (métro, tram, bus) | ✅ complète : noms des arrêts et des stations, lignes |
+| **SNCB / NMBS** | Trains, toute la Belgique | ⚠️ lecture de la carte ; trajets sans nom de gare (non testé) |
+| **De Lijn** | Flandre (tram, bus) | ⚠️ lecture de la carte ; trajets sans nom d'arrêt (non testé) |
+| **TEC** | Wallonie (bus, tram de Charleroi) | ⚠️ lecture de la carte ; trajets sans nom d'arrêt (non testé) |
+
+La table des arrêts est issue du réseau **STIB** : en dehors de Bruxelles, les trajets s'affichent au mieux avec la ligne et le numéro d'arrêt, sans nom. Seules des cartes utilisées à Bruxelles ont été testées.
+
+---
+
+## 📸 Démonstration
+
+Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, commune, date de naissance, numéro de carte et trajets inventés — *BLECHMAN Reginald*, clin d'œil à Wrench de *Watch Dogs 2*).
+
+| | | |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/demo_02_menu.png" width="256"><br>Menu principal | <img src="docs/screenshots/demo_03_lecture.png" width="256"><br>Lecture d'une carte | <img src="docs/screenshots/demo_04_sauvegardes.png" width="256"><br>Sauvegardes |
+| <img src="docs/screenshots/demo_06_resume_1.png" width="256"><br>Résumé (titulaire) | <img src="docs/screenshots/demo_07_resume_2.png" width="256"><br>Résumé (carte, abonnement) | <img src="docs/screenshots/demo_08_resume_3.png" width="256"><br>Résumé (dernière utilisation) |
+| <img src="docs/screenshots/demo_05_carte.png" width="256"><br>Menu de la carte | <img src="docs/screenshots/demo_09_titulaire.png" width="256"><br>Titulaire | <img src="docs/screenshots/demo_10_trajets_1.png" width="256"><br>Trajets (tram + correspondance) |
+| <img src="docs/screenshots/demo_11_trajets_2.png" width="256"><br>Trajets (métro) | <img src="docs/screenshots/demo_12_supprimer.png" width="256"><br>Suppression d'une sauvegarde | <img src="docs/screenshots/demo_13_apropos.png" width="256"><br>A propos |
 
 ---
 
