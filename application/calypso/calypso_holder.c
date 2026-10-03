@@ -9,8 +9,8 @@
 
 const char* calypso_holder_gender_name(uint8_t gender) {
     switch(gender) {
-    case 1:  return "Male";
-    case 2:  return "Female";
+    case 1:  return "Homme";
+    case 2:  return "Femme";
     default: return NULL;
     }
 }
@@ -18,8 +18,8 @@ const char* calypso_holder_gender_name(uint8_t gender) {
 const char* calypso_holder_gender_title(uint8_t gender) {
     /* zoobab uses these directly from the 2 gender bits. */
     switch(gender) {
-    case 1:  return "Mr";
-    case 2:  return "Mrs";
+    case 1:  return "M.";
+    case 2:  return "Mme";
     default: return NULL;
     }
 }

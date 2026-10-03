@@ -82,7 +82,10 @@ bool calypso_event_parse(const uint8_t* rec, size_t rec_len, CalypsoEvent* out) 
         out->flags |= CALYPSO_EVENT_HAS_SERIAL;
     }
     if(bm2 & 0x02) calypso_bits_skip(&b, 16);
-    if(bm2 & 0x04) calypso_bits_skip(&b, 8);
+    if(bm2 & 0x04) {
+        out->transfer_number = (uint8_t)calypso_bits_read(&b, 8);
+        out->flags |= CALYPSO_EVENT_HAS_TRANSFER;
+    }
     if(bm2 & 0x08) calypso_bits_skip(&b, 16);
     if(bm2 & 0x10) {
         const uint16_t fs_days    = (uint16_t)calypso_bits_read(&b, 14);

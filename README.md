@@ -1,117 +1,182 @@
-# flipper-mobib
+# 🚇 flipper-mobib FR – Lecteur de cartes MOBIB pour Flipper Zero
 
-A [Flipper Zero](https://flipperzero.one/) app that reads and decodes Belgian
-**MOBIB** transit cards — the Calypso/ISO 14443-B contactless card shared by
-**STIB/MIVB**, **SNCB/NMBS**, **De Lijn** and **TEC**.
+![Version](https://img.shields.io/badge/Version-0.1--fr-blue)
+![License](https://img.shields.io/badge/License-GPL--3.0-teal)
+![Firmware](https://img.shields.io/badge/Firmware-Momentum_mntm--012-orange)
+[![Author: Th3rd](https://img.shields.io/badge/github-Th3rdMan-181717?logo=github)](https://github.com/Th3rdMan)
+[![Based on: flipper-mobib](https://img.shields.io/badge/based_on-i12bp8%2Fflipper--mobib-555)](https://github.com/i12bp8/flipper-mobib)
 
-Tap any MOBIB card against the Flipper's back and the app identifies it,
-dumps every readable file, decodes the human-meaningful fields and saves the
-capture to the SD card so you can browse it again later without the card.
+**flipper-mobib FR** est une application [Flipper Zero](https://flipperzero.one/) qui lit et décode les cartes de transport belges **MOBIB** — la carte sans contact Calypso / ISO 14443-B partagée par la **STIB/MIVB**, la **SNCB/NMBS**, **De Lijn** et le **TEC**.  
+Il suffit de poser la carte contre le dos du Flipper : l'application lit tous les fichiers accessibles, décode les informations utiles (titulaire, abonnements, derniers trajets) et sauvegarde la lecture sur la carte SD.
 
-![About screen](docs/screenshots/about.png)
+> Construit sur la base de [flipper-mobib](https://github.com/i12bp8/flipper-mobib) par **i12bp8**, traduit en français, réorganisé et enrichi.
 
-## What it decodes
+<p align="center"><img src="docs/screenshots/menu.png" width="384" alt="Menu principal"></p>
 
-| Section    | Fields                                                                                  |
-|------------|-----------------------------------------------------------------------------------------|
-| Overview   | PUPI, application serial, country, network, protocol version, expiry, counts           |
-| Holder     | Name, gender, date of birth (personalised cards only), postal code                     |
-| Contracts  | Per-slot tariff, sale date, duration, price in euros                                   |
-| Journeys   | Date/time, transport mode, route/line, STIB metro station or bus stop name            |
-| Records    | Grouped SFI listing with human labels and a hex preview of each record                 |
-| FCI        | Parsed BER-TLV (AID, issuer extension, application serial) + raw dump                  |
-| Deep scan  | Secondary Calypso applications (MPP/RT2/ETicket) and path-selected files we could read |
+---
 
-Every scan is auto-saved to `/ext/apps_data/mobib/dumps/<PUPI>_<UTC>.mobibdump`
-as a human-readable [FlipperFormat](https://developer.flipper.net/flipperzero/doxygen/group__FlipperFormat.html)
-file. Use **Saved cards** from the main menu to re-render any past capture
-without a card present.
+## 🔍 Fonctionnalités
 
-## What it explicitly does not do
+- 🇫🇷 **Interface entièrement en français**  
+  Menus, écrans de lecture, sections de la carte, messages et écran « A propos ».  
+  Dates au format `JJ/MM/AAAA`, prix en `EUR`. Les polices du Flipper étant limitées à l'ASCII, les textes sont écrits sans accents.
 
-**Writes are impossible** without the issuer's keys. Calypso writes
-(`UPDATE RECORD`, `INCREASE`, `DECREASE`) require an authenticated Secure
-Session opened with a 3DES/AES key held in a hardware SAM that only
-transit operators possess. This app is read-only by design and cannot:
+- 📋 **Résumé affiché dès la lecture**  
+  Après un scan, l'essentiel apparaît immédiatement, sans passer par les menus :  
+  titulaire, validité de la carte, fin de l'abonnement en cours, dernier voyage.
 
-- Forge, modify or top up contracts
-- Increment/decrement remaining-trip counters
-- Decrypt the card's MAC authenticators
-- Read files whose access conditions demand an open Secure Session
+- 💾 **Sauvegardes nommées `NOM Prenom`**  
+  Chaque lecture est enregistrée dans `/ext/apps_data/mobib/dumps/` sous le nom du titulaire (`DUPONT Jean.mobibdump`), avec un suffixe numérique si le nom existe déjà (`DUPONT Jean 2`).  
+  Les cartes anonymes gardent le format `<PUPI>_<date>`.
 
-If someone offers you a Flipper app that "writes MOBIB", it is either a
-scam or is misusing a leaked operator key — neither will survive contact
-with an actual fare gate.
+- 🗑️ **Suppression des sauvegardes**  
+  Depuis le menu de la carte, avec écran de confirmation. Retour automatique à la liste des sauvegardes.
 
-## Building
+- 🚌 **Trajets lisibles**  
+  Chaque validation est présentée clairement :
 
-Target firmware: **Momentum** via [`ufbt`](https://github.com/flipperdevices/flipperzero-ufbt).
+  | Ligne | Exemple |
+  |-------|---------|
+  | Date - heure | `02/10/2026 - 17:26` |
+  | Mode + ligne | `Bus 71`, `Tram 92`, `Metro 2` |
+  | Lieu | `Arret : Flagey` / `Station : Simonis` |
+  | Correspondance | `depart a 16:32` (heure de la première validation du trajet) |
 
-```sh
-ufbt            # build the .fap into dist/
-ufbt launch     # build, upload to a connected Flipper and launch
-ufbt cli        # open a serial CLI to the device
+- 🗺️ **Arrêts STIB à jour (2026)**  
+  Table régénérée depuis le GTFS officiel STIB-MIVB : **72 lignes** (bus, tram, métro) et **3405 arrêts**, contre 49 lignes de bus en 2009.  
+  Le script [`tools/gtfs_stops.py`](tools/gtfs_stops.py) permet de la régénérer à tout moment.
+
+- 🎫 **Abonnements corrigés**  
+  L'unité de durée utilisée par les cartes actuelles est interprétée en **mois** (et non en années), ce qui donne des durées et des dates de fin cohérentes.
+
+- 🔎 **Sections détaillées**  
+  Titulaire, Abonnements, Trajets, Enregistrements bruts, FCI et Analyse avancée (applications Calypso secondaires) restent accessibles depuis le menu de la carte.
+
+---
+
+## 🧾 Exemple de résumé
+
+Données fictives :
+
+```
+=== CARTE MOBIB ===
+
+DUPONT Jean
+Carte n. 1A2B3C4D
+
+Valable jusqu'au 12/05/2029
+Reseau MOBIB
+
+Abonnement 31/10/2026
+Dernier voyage : Merode
+02/10 17:26 - Metro 1
+
+1 abonnement
+4 trajets
 ```
 
-The built `dist/mobib.fap` can also be copied manually to
-`/ext/apps/NFC/` on the SD card.
+- **Abonnement** : date de fin estimée de l'abonnement le plus récent (date d'achat + durée − 1 jour). Les tickets Jump ne sont pas comptés. `(echu)` est ajouté si la date est dépassée.
+- **Dernier voyage** : le nom de l'arrêt n'apparaît que s'il est reconnu ; un nom long passe à la ligne suivante.
 
-## Repository layout
+---
 
+## 🎯 Objectif
+
+flipper-mobib FR est conçu pour **lire ses propres cartes** et comprendre ce qu'elles contiennent, dans un cadre de curiosité, d'interopérabilité ou de recherche.
+
+L'application est **en lecture seule** par conception :
+
+- pas d'écriture ni de modification des abonnements ;
+- pas de recharge ni de modification des compteurs de voyages ;
+- pas de déchiffrement des authentifiants de la carte ;
+- pas de lecture des fichiers protégés par une session sécurisée.
+
+Toute écriture Calypso exige une session authentifiée avec les clés des opérateurs, stockées dans un module matériel (SAM) et impossibles à extraire de la carte.
+
+---
+
+## 📊 Sources de données
+
+| Donnée | Source | Validation |
+|--------|--------|------------|
+| Arrêts bus / tram / métro (ligne + numéro STIB) | GTFS STIB-MIVB, [data.belgianmobility.io](https://data.belgianmobility.io), 03/10/2026 | 97 % des couples (ligne, arrêt) communs avec la table 2009 portent le même nom |
+| Stations de métro (zone / sous-zone / station) | [zoobab/mobib-extractor](https://github.com/zoobab/mobib-extractor) (2009) | inchangée |
+| Structure des champs (titulaire, trajets, abonnements) | [metrodroid](https://github.com/metrodroid/metrodroid) | vérifiée sur des cartes réelles 2024-2026 |
+
+Points vérifiés sur des cartes réelles :
+
+- le nom est stocké `PRENOM` + séparateur + `NOM` ;
+- le code transporteur `0` correspond au **métro** ;
+- l'unité de durée `3` des abonnements correspond à des **mois** (abonnement de 49 EUR = 1, abonnement annuel = 12).
+
+---
+
+## ⚠️ Limites connues
+
+- La carte ne conserve que les **3 ou 4 dernières validations**, pas l'historique complet.
+- Seules les **validations** sont enregistrées : impossible de savoir où le voyageur est descendu.
+- La table des **stations de métro** date de 2009 et utilise une numérotation propre à la carte, absente du GTFS : certaines stations s'affichent sous forme de numéro.
+- La **date de fin d'abonnement** est calculée (date d'achat + durée) et non lue sur la carte.
+- Seuls 4 noms de tarifs sont connus ; les autres s'affichent `Tarif 0x…`.
+- Pas d'accents à l'écran : les polices intégrées du Flipper sont limitées à l'ASCII.
+
+---
+
+## 📦 Installation
+
+Firmware cible : **Momentum** (testé sur `mntm-012`, API 87.1).
+
+**Compilation avec [`ufbt`](https://github.com/flipperdevices/flipperzero-ufbt) :**
+```bash
+git clone https://github.com/Th3rdMan/flipper-mobib.git
+cd flipper-mobib
+pip install ufbt
+ufbt update --hw-target=f7 --url=https://up.momentum-fw.dev/builds/firmware/mntm-012/flipper-z-f7-sdk-mntm-012.zip
+ufbt              # compile dist/mobib.fap
+ufbt launch       # compile, envoie sur le Flipper connecté et lance l'application
 ```
-application/
-  calypso/         APDU layer, BER-TLV walker, record decoders
-                   (FCI, env, event, contract, holder, stations, bus)
-  nfc/             Iso14443_4b poller wrapper + full-card dump
-  storage/         FlipperFormat persistence (save + load)
-  ui/              Section formatters (Overview/Holder/…/Deep scan)
-  scenes/          Scene Manager scenes (start, scan, card, etc.)
-docs/              Design notes + MOBIB protocol references
-samples/           Git-ignored local .mobibdump captures
-icons/             App icon (10x10 PNG, 1-bit)
-application.fam    FAP manifest consumed by ufbt
+
+Le fichier `dist/mobib.fap` peut aussi être copié manuellement dans `/ext/apps/NFC/` sur la carte SD.
+
+**Mise à jour de la table des arrêts :**
+```bash
+# gtfs/ = archive GTFS STIB-MIVB décompressée
+python tools/gtfs_stops.py gtfs application/calypso/calypso_bus_table.inc nouvelle_table.inc
 ```
 
-## Credits & prior art
+---
 
-The app ships field layouts, station tables and alphabet rules ported from
-two excellent open-source projects. They did the hard work; this is a
-re-expression of their findings in a form the Flipper Zero firmware can run:
+## 🧭 Utilisation
 
-- **[metrodroid/metrodroid](https://github.com/metrodroid/metrodroid)** —
-  Kotlin/Android transit reader. Source of MOBIB environment, event,
-  contract and holder bit layouts; of the Calypso file map
-  (`CalypsoApplication.kt`); of the 5-bit name alphabet. GPL-3.0.
-- **[zoobab/mobib-extractor](https://github.com/zoobab/mobib-extractor)** —
-  2009-era Python MOBIB decoder. Source of the STIB metro station table
-  (70 rows) and bus stop database (~2200 rows) compiled into
-  `calypso_stations.c` / `calypso_bus.c`.
-- **Intercode v2** / **Calypso** public specifications.
+1. Ouvrir **Apps → NFC → MOBIB**.
 
-## Updating the station tables
+2. Choisir **Lire une carte** et poser la carte MOBIB à plat contre le dos du Flipper.
 
-When STIB renumbers a stop or adds a new one, regenerate the tables from
-the upstream CSVs:
+3. Le **Résumé** s'affiche automatiquement ; la lecture est sauvegardée sous `NOM Prenom`.
 
-```sh
-python3 <<'PY'
-import csv
-with open('zoobab-data/Database/Metro.csv') as f:
-    r = csv.reader(f); next(r)
-    for row in r:
-        _, zone, sz, st, line, name, *_ = [c.strip() for c in row]
-        print(f'{{0x{int(zone,2):02X}, 0x{int(sz,2):X}, 0x{int(st,2):02X}, "{line}", "{name}"}},')
-PY
-```
+4. **Retour** ouvre le menu de la carte : Résumé, Titulaire, Abonnements, Trajets, Enregistrements, FCI, Analyse avancée.
 
-The bus table uses the same CSV with line/code columns and is kept sorted
-on `(line, code)` for binary search.
+5. **Sauvegardes** (menu principal) permet de rouvrir une lecture précédente sans la carte.
 
-## License
+6. **Supprimer la sauvegarde** (en bas du menu de la carte) efface le fichier après confirmation.
 
-GPL-3.0-or-later. See [`LICENSE`](./LICENSE).
+---
 
-Not affiliated with STIB/MIVB, SNCB/NMBS, De Lijn, TEC, Calypso Networks
-Association, or any transit operator. Exists for interoperability research
-and for reading your own cards. Respect your local laws around RFID and
-personal data.
+## ✍️ Auteur & crédits
+
+**Th3rd**  
+👁️‍🗨️ [https://github.com/Th3rdMan](https://github.com/Th3rdMan)
+
+Basé sur [**flipper-mobib**](https://github.com/i12bp8/flipper-mobib) par [**i12bp8**](https://github.com/i12bp8) — merci pour les bases posées. Sa documentation d'origine (en anglais) est conservée dans [`docs/README.upstream.md`](docs/README.upstream.md).
+
+Remerciements également à :
+
+- [**metrodroid**](https://github.com/metrodroid/metrodroid) — structures des champs MOBIB / Calypso (GPL-3.0) ;
+- [**zoobab/mobib-extractor**](https://github.com/zoobab/mobib-extractor) — table des stations de métro ;
+- **STIB-MIVB** — données des arrêts, © STIB-MIVB, licence [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Sans lien avec la STIB/MIVB, la SNCB/NMBS, De Lijn, le TEC ou Calypso Networks Association. À utiliser uniquement sur ses propres cartes, dans le respect des lois sur la RFID et les données personnelles.
+
+---
+
+> 📘 Projet libre sous licence **GPL-3.0-or-later**. Contributions, suggestions et pull requests bienvenues.

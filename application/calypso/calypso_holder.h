@@ -39,10 +39,10 @@ typedef struct {
     size_t   name_len;
 } CalypsoHolder;
 
-/** Returns "Male", "Female", or NULL. */
+/** Returns "Homme", "Femme", or NULL. */
 const char* calypso_holder_gender_name(uint8_t gender);
 
-/** Returns "Mr", "Mrs", or NULL. */
+/** Returns "M.", "Mme", or NULL. */
 const char* calypso_holder_gender_title(uint8_t gender);
 
 /**

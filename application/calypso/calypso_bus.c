@@ -1,8 +1,11 @@
 /*
  * MOBIB — STIB bus stop table. See `calypso_bus.h`.
  *
- * Auto-generated from zoobab/mobib-extractor Database/Bus.csv (2203 rows).
- * To regenerate run the python snippet in docs/MOBIB_NOTES.md.
+ * Generated from the STIB-MIVB GTFS feed (data.belgianmobility.io, 2026-10-03,
+ * CC BY 4.0): every (route_short_name, numeric stop_id) pair served by a
+ * trip, with the French stop name. 97 % of the (line, code) pairs shared
+ * with the original zoobab/mobib-extractor table carry the same name.
+ * To regenerate: python tools/gtfs_stops.py <gtfs_dir> <old.inc> <out.inc>
  */
 
 #include "calypso_bus.h"

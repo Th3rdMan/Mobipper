@@ -16,19 +16,23 @@
 #include "../calypso/calypso_bus.h"
 #include "../calypso/calypso_sfi.h"
 #include "../calypso/calypso_holder.h"
+#include "../storage/mobib_storage.h"
 
+#include "../calypso/calypso_date.h"
+
+#include <furi_hal_rtc.h>
 #include <inttypes.h>
 #include <string.h>
 
 const char* mobib_section_title(MobibSection s) {
     switch(s) {
-    case MobibSectionOverview:  return "Overview";
-    case MobibSectionHolder:    return "Holder";
-    case MobibSectionContracts: return "Contracts";
-    case MobibSectionJourneys:  return "Journeys";
-    case MobibSectionRecords:   return "Records";
+    case MobibSectionOverview:  return "Resume";
+    case MobibSectionHolder:    return "Titulaire";
+    case MobibSectionContracts: return "Abonnements";
+    case MobibSectionJourneys:  return "Trajets";
+    case MobibSectionRecords:   return "Enregistrements";
     case MobibSectionFci:       return "FCI";
-    case MobibSectionDeep:      return "Deep scan";
+    case MobibSectionDeep:      return "Analyse avancee";
     default:                    return "?";
     }
 }
@@ -58,196 +62,103 @@ static bool parse_env(const MobibDump* d, CalypsoEnvironment* env) {
     return calypso_env_parse(r->data, r->len, env);
 }
 
-/* ----------------------------- Overview ----------------------------- */
-
-static void format_overview(const MobibDump* d, FuriString* s) {
-    append_divider(s, "MOBIB CARD");
-
-    furi_string_cat_str(s, "Card N\xc2\xb0  ");
-    append_pupi_compact(s, &d->card);
-    furi_string_cat_str(s, "\n\n");
-
-    CalypsoEnvironment env;
-    bool have_env = parse_env(d, &env);
-    if(have_env) {
-        if(env.country_name) {
-            furi_string_cat_printf(s, "Issued by\n  %s\n", env.country_name);
-        } else {
-            furi_string_cat_printf(s, "Country  %u\n", env.country_code);
-        }
-        if(env.network_name) {
-            furi_string_cat_printf(s, "Network\n  %s\n", env.network_name);
-        } else {
-            furi_string_cat_printf(s, "Network  0x%03X\n", env.network_id);
-        }
-        furi_string_cat_printf(s, "App version  %u\n", env.version);
-        if(env.validity_end_year) {
-            furi_string_cat_printf(
-                s, "Valid until\n  %04u-%02u-%02u\n",
-                env.validity_end_year, env.validity_end_month, env.validity_end_day);
-        }
-        furi_string_cat_str(s, "\n");
-    }
-
-    /* Counts */
-    size_t contracts = 0, journeys = 0;
-    for(size_t i = 0; i < d->record_count; ++i) {
-        const MobibRecord* r = &d->records[i];
-        if(r->sfi == 0x09) {
-            CalypsoContract c;
-            if(calypso_contract_parse(r->data, r->len, &c)) contracts++;
-        } else if(r->sfi == 0x17) {
-            CalypsoEvent e;
-            if(calypso_event_parse(r->data, r->len, &e)) journeys++;
-        }
-    }
-    furi_string_cat_printf(s, "%zu contract%s\n", contracts, contracts == 1 ? "" : "s");
-    furi_string_cat_printf(s, "%zu journey%s\n", journeys, journeys == 1 ? "" : "s");
-    furi_string_cat_printf(s, "%zu record%s on card\n",
-        d->record_count, d->record_count == 1 ? "" : "s");
-
-    if(d->calypso_selected) {
-        CalypsoFci fci;
-        if(calypso_fci_parse(d->fci, d->fci_len, &fci) && fci.app_serial_len > 0) {
-            furi_string_cat_str(s, "\nApp serial\n  ");
-            for(size_t i = 0; i < fci.app_serial_len; ++i) {
-                furi_string_cat_printf(s, "%02X", fci.app_serial[i]);
-            }
-            furi_string_cat_str(s, "\n");
-        }
-    }
-}
-
-/* ------------------------------ Holder ------------------------------ */
-
-static void format_holder(const MobibDump* d, FuriString* s) {
-    append_divider(s, "HOLDER");
-
-    /* Try the rich source first: the path-selected HOLDER_EXTENDED file. */
-    if(d->holder_ext_present) {
-        /* Each HOLDER_EXTENDED record contains 29 bytes of payload; the
-         * Calypso layer pads responses to 32 bytes. Concatenating the
-         * full 32-byte slots leaves three zero bytes embedded in the
-         * middle of the name field and breaks the bit alignment. We
-         * trim to 29 bytes per record to match metrodroid / zoobab. */
-        const size_t kRealRecLen = 29;
-
-        uint8_t flat[MOBIB_HOLDER_EXT_RECS * 29];
-        size_t flat_len = 0;
-        for(size_t i = 0; i < MOBIB_HOLDER_EXT_RECS; ++i) {
-            size_t n = d->holder_ext_len[i];
-            if(n > kRealRecLen) n = kRealRecLen;
-            if(n > 0) {
-                memcpy(&flat[flat_len], d->holder_ext[i], n);
-                flat_len += n;
-            }
-        }
-
-        CalypsoHolder h;
-        if(calypso_holder_parse(flat, flat_len, &h) && h.valid) {
-            const char* gender = calypso_holder_gender_name(h.gender);
-            const char* title  = calypso_holder_gender_title(h.gender);
-
-            if(h.gender == 0 && h.name_len == 0) {
-                furi_string_cat_str(s, "Anonymous card.\n");
-                furi_string_cat_str(s, "(holder file is\n present but blank)\n");
-            } else {
-                if(h.name_len > 0) {
-                    if(title) {
-                        furi_string_cat_printf(s, "%s %s\n", title, h.name);
-                    } else {
-                        furi_string_cat_printf(s, "%s\n", h.name);
-                    }
-                }
-                if(gender) {
-                    furi_string_cat_printf(s, "Gender  %s\n", gender);
-                }
-                if(h.birth_year_top2 || h.birth_year_bot2 ||
-                   h.birth_month   || h.birth_day) {
-                    /* Birth date is BCD packed YYYYMMDD; the hex digits of
-                     * each byte ARE the decimal digits, so %02X reads as
-                     * the human number. */
-                    furi_string_cat_printf(
-                        s, "Born    %02X%02X-%02X-%02X\n",
-                        h.birth_year_top2, h.birth_year_bot2,
-                        h.birth_month, h.birth_day);
-                }
-            }
-            furi_string_cat_str(s, "\n");
-        } else {
-            furi_string_cat_str(s, "Holder file present\nbut unparseable.\n\n");
-        }
-    }
-
-    /* Then add what the Environment record carries (postal code is here). */
-    CalypsoEnvironment env;
-    if(parse_env(d, &env) && env.holder_postal_code) {
-        furi_string_cat_printf(s, "Postal code  %u\n", env.holder_postal_code);
-    }
-
-    if(!d->holder_ext_present) {
-        furi_string_cat_str(s, "Anonymous card.\n\n");
-        furi_string_cat_str(s, "MOBIB Basic does not\n");
-        furi_string_cat_str(s, "store holder data.\n");
-        furi_string_cat_str(s, "Personalised cards\n");
-        furi_string_cat_str(s, "(SNCB / TEC / De Lijn)\n");
-        furi_string_cat_str(s, "expose name & gender\n");
-        furi_string_cat_str(s, "in HOLDER_EXTENDED.\n");
-    }
-}
-
 /* ----------------------------- Contracts ---------------------------- */
 
-static void format_contracts(const MobibDump* d, FuriString* s) {
-    append_divider(s, "CONTRACTS");
+static uint8_t days_in_month(uint16_t year, uint8_t month) {
+    static const uint8_t kDays[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if(month == 2 && ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0)) return 29;
+    return kDays[month - 1];
+}
 
-    size_t shown = 0;
-    for(size_t i = 0; i < d->record_count; ++i) {
-        const MobibRecord* r = &d->records[i];
-        if(r->sfi != 0x09) continue;
-        CalypsoContract c;
-        if(!calypso_contract_parse(r->data, r->len, &c)) continue;
+/* Last valid day of a time-based contract: sale date + duration - 1 day.
+ * Duration units: 0 = days, 1 = weeks, 2 and 3 = months. Units 3 is what
+ * real 2023-2026 STIB passes carry (49 EUR for 1 = monthly pass, 12 for
+ * the yearly one). Returns false for trip tickets and undated contracts. */
+static bool contract_end(const CalypsoContract* c, uint16_t* y, uint8_t* m, uint8_t* d) {
+    if(!(c->flags & CALYPSO_CONTRACT_HAS_SALE) || !c->sale_year) return false;
+    if(!(c->flags & CALYPSO_CONTRACT_HAS_DURATION) || !c->duration) return false;
+    if(c->tariff == CALYPSO_TARIFF_JUMP_1_TRIP || c->tariff == CALYPSO_TARIFF_JUMP_10_TRIPS)
+        return false;
 
-        shown++;
-        furi_string_cat_printf(s, "Slot %u\n", (unsigned)r->record);
-
-        const char* tname = calypso_contract_tariff_name(c.tariff);
-        if(tname) {
-            furi_string_cat_printf(s, "  %s\n", tname);
-        } else {
-            furi_string_cat_printf(s, "  Tariff 0x%04X\n", c.tariff);
-        }
-
-        if(c.flags & CALYPSO_CONTRACT_HAS_SALE && c.sale_year) {
-            furi_string_cat_printf(s, "  Sold %04u-%02u-%02u\n",
-                c.sale_year, c.sale_month, c.sale_day);
-        }
-        if(c.flags & CALYPSO_CONTRACT_HAS_DURATION) {
-            /* metrodroid documents 0/1/2; 3 is empirical from a Belgian
-             * Railpass and appears to mean "years" (e.g. 12 months written
-             * as 1 year, 30 months written with units=2). */
-            const char* unit = "?";
-            switch(c.duration_units) {
-            case 0: unit = "days";   break;
-            case 1: unit = "weeks";  break;
-            case 2: unit = "months"; break;
-            case 3: unit = "years";  break;
-            }
-            furi_string_cat_printf(s, "  Length %u %s\n", c.duration, unit);
-        }
-        if(c.flags & CALYPSO_CONTRACT_HAS_PRICE && c.price_amount) {
-            /* Calypso stores the price in cents (centimes) per metrodroid's
-             * En1545LookupSTR.parseCurrency → TransitCurrency.EUR(price). */
-            furi_string_cat_printf(
-                s, "  Price \xe2\x82\xac%u.%02u\n",
-                c.price_amount / 100, c.price_amount % 100);
-        }
-        furi_string_cat_str(s, "\n");
+    if(c->duration_units <= 1) {
+        const uint32_t days = (uint32_t)c->duration * (c->duration_units ? 7 : 1);
+        return calypso_date_from_days((uint16_t)(c->sale_days + days - 1), y, m, d);
     }
-    if(shown == 0) furi_string_cat_str(s, "No active contracts.\n");
+
+    uint32_t months = (uint32_t)c->sale_month - 1 + c->duration;
+    *y = (uint16_t)(c->sale_year + months / 12);
+    *m = (uint8_t)(months % 12 + 1);
+    const uint8_t dim = days_in_month(*y, *m);
+    *d = c->sale_day > dim ? dim : c->sale_day;
+    /* minus one day */
+    if(*d > 1) {
+        (*d)--;
+    } else {
+        if(*m == 1) {
+            *m = 12;
+            (*y)--;
+        } else {
+            (*m)--;
+        }
+        *d = days_in_month(*y, *m);
+    }
+    return true;
 }
 
 /* ----------------------------- Journeys ----------------------------- */
+
+typedef struct {
+    bool has_route;
+    bool is_metro;
+    const char* mode; /**< "Metro", "Bus", "Tram" or NULL. */
+    const CalypsoBusStop* stop;
+    const CalypsoMetroStation* station;
+} JourneyInfo;
+
+static void journey_describe(const CalypsoEvent* e, JourneyInfo* j) {
+    memset(j, 0, sizeof(*j));
+    const bool has_provider = e->flags & CALYPSO_EVENT_HAS_PROVIDER;
+    j->has_route = (e->flags & CALYPSO_EVENT_HAS_ROUTE) && e->route_number;
+    /* zoobab: METRO = 0. Confirmed on real 2024-2026 v3 cards (metro
+     * lines 1/2/6 with metro station location ids). Metro events also
+     * carry a LOCATION_ID_BUS value, but it is not a STIB stop id. */
+    j->is_metro = has_provider && e->service_provider == CALYPSO_PROVIDER_METRO;
+
+    /* Resolve the place: STIB stop for surface lines, metro station
+     * (zone / sub-zone / station) otherwise. */
+    if(!j->is_metro && e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus &&
+       j->has_route) {
+        /* zoobab/mobib-extractor: bus line = low 7 bits of ROUTE_NUMBER. */
+        j->stop = calypso_bus_stop_lookup(e->route_number & 0x7F, e->location_id_bus);
+    }
+    if(!j->stop && has_provider) {
+        j->station = calypso_metro_station_lookup_id(e->location_id);
+    }
+
+    if(j->is_metro || j->station) {
+        j->mode = "Metro";
+    } else if(has_provider) {
+        j->mode = calypso_event_provider_name(e->service_provider);
+    }
+}
+
+/* "Metro 2", "Bus 71", "Ligne 12"... Returns false if nothing is known. */
+static bool append_journey_mode(FuriString* s, const CalypsoEvent* e, const JourneyInfo* j) {
+    if(!j->mode && !j->has_route) return false;
+    furi_string_cat_str(s, j->mode ? j->mode : "Ligne");
+    if(j->has_route) {
+        furi_string_cat_printf(s, " %u", e->route_number & 0x7F);
+    } else if(j->station) {
+        furi_string_cat_printf(s, " %s", j->station->line);
+    }
+    return true;
+}
+
+static const char* journey_place_name(const JourneyInfo* j) {
+    if(j->stop) return j->stop->name;
+    if(j->station) return j->station->name;
+    return NULL;
+}
 
 static int compare_events_desc(const CalypsoEvent* a, const CalypsoEvent* b) {
     /* Sort by (date, time) descending. */
@@ -258,8 +169,228 @@ static int compare_events_desc(const CalypsoEvent* a, const CalypsoEvent* b) {
     return 0;
 }
 
+/* ----------------------------- Overview ----------------------------- */
+
+static void format_overview(const MobibDump* d, FuriString* s) {
+    append_divider(s, "CARTE MOBIB");
+
+    /* Holder name first, when the card is personalised. */
+    CalypsoHolder holder;
+    FuriString* name = furi_string_alloc();
+    if(mobib_dump_holder(d, &holder) && mobib_holder_display_name(&holder, name)) {
+        furi_string_cat_printf(s, "%s\n", furi_string_get_cstr(name));
+    }
+    furi_string_free(name);
+
+    furi_string_cat_str(s, "Carte n. ");
+    append_pupi_compact(s, &d->card);
+    furi_string_cat_str(s, "\n\n");
+
+    CalypsoEnvironment env;
+    if(parse_env(d, &env)) {
+        if(env.validity_end_year) {
+            furi_string_cat_printf(
+                s, "Valable jusqu'au %02u/%02u/%04u\n",
+                env.validity_end_day, env.validity_end_month, env.validity_end_year);
+        }
+        if(env.network_name) {
+            furi_string_cat_printf(s, "Reseau %s\n", env.network_name);
+        } else {
+            furi_string_cat_printf(s, "Reseau 0x%03X\n", env.network_id);
+        }
+        furi_string_cat_str(s, "\n");
+    }
+
+    /* Counts, latest subscription end and latest journey in one pass. */
+    size_t contracts = 0, journeys = 0;
+    uint32_t best_end = 0; /* YYYYMMDD */
+    CalypsoEvent last;
+    bool have_last = false;
+    for(size_t i = 0; i < d->record_count; ++i) {
+        const MobibRecord* r = &d->records[i];
+        if(r->sfi == 0x09) {
+            CalypsoContract c;
+            if(!calypso_contract_parse(r->data, r->len, &c)) continue;
+            contracts++;
+            uint16_t y;
+            uint8_t m, dd;
+            if(contract_end(&c, &y, &m, &dd)) {
+                const uint32_t end = (uint32_t)y * 10000 + m * 100 + dd;
+                if(end > best_end) best_end = end;
+            }
+        } else if(r->sfi == 0x17) {
+            CalypsoEvent e;
+            if(!calypso_event_parse(r->data, r->len, &e)) continue;
+            journeys++;
+            if(!have_last || compare_events_desc(&e, &last) < 0) {
+                last = e;
+                have_last = true;
+            }
+        }
+    }
+
+    if(best_end) {
+        DateTime now;
+        furi_hal_rtc_get_datetime(&now);
+        const uint32_t today = (uint32_t)now.year * 10000 + now.month * 100 + now.day;
+        furi_string_cat_printf(
+            s,
+            "Abonnement %02lu/%02lu/%04lu%s\n",
+            (unsigned long)(best_end % 100),
+            (unsigned long)(best_end / 100 % 100),
+            (unsigned long)(best_end / 10000),
+            best_end < today ? " (echu)" : "");
+    }
+
+    if(have_last) {
+        JourneyInfo j;
+        journey_describe(&last, &j);
+        const char* place = journey_place_name(&j);
+        if(place && strlen(place) <= 10) {
+            furi_string_cat_printf(s, "Dernier voyage : %s\n", place);
+        } else if(place) {
+            /* Long names would be cut at the screen edge. */
+            furi_string_cat_printf(s, "Dernier voyage :\n  %s\n", place);
+        } else {
+            furi_string_cat_str(s, "Dernier voyage :\n");
+        }
+        if(last.event_year) {
+            furi_string_cat_printf(
+                s, "%02u/%02u %02u:%02u",
+                last.event_day, last.event_month, last.event_hour, last.event_minute);
+        }
+        FuriString* mode = furi_string_alloc();
+        if(append_journey_mode(mode, &last, &j)) {
+            furi_string_cat_printf(s, " - %s", furi_string_get_cstr(mode));
+        }
+        furi_string_free(mode);
+        furi_string_cat_str(s, "\n");
+    }
+    if(best_end || have_last) furi_string_cat_str(s, "\n");
+
+    furi_string_cat_printf(s, "%zu abonnement%s\n", contracts, contracts > 1 ? "s" : "");
+    furi_string_cat_printf(s, "%zu trajet%s\n", journeys, journeys > 1 ? "s" : "");
+}
+
+/* ------------------------------ Holder ------------------------------ */
+
+static void format_holder(const MobibDump* d, FuriString* s) {
+    append_divider(s, "TITULAIRE");
+
+    /* Try the rich source first: the path-selected HOLDER_EXTENDED file. */
+    if(d->holder_ext_present) {
+        CalypsoHolder h;
+        if(mobib_dump_holder(d, &h)) {
+            const char* gender = calypso_holder_gender_name(h.gender);
+            const char* title  = calypso_holder_gender_title(h.gender);
+
+            if(h.gender == 0 && h.name_len == 0) {
+                furi_string_cat_str(s, "Carte anonyme.\n");
+                furi_string_cat_str(s, "(fichier titulaire\n present mais vide)\n");
+            } else {
+                FuriString* name = furi_string_alloc();
+                if(mobib_holder_display_name(&h, name)) {
+                    if(title) {
+                        furi_string_cat_printf(
+                            s, "%s %s\n", title, furi_string_get_cstr(name));
+                    } else {
+                        furi_string_cat_printf(s, "%s\n", furi_string_get_cstr(name));
+                    }
+                }
+                furi_string_free(name);
+                if(gender) {
+                    furi_string_cat_printf(s, "Sexe  %s\n", gender);
+                }
+                if(h.birth_year_top2 || h.birth_year_bot2 ||
+                   h.birth_month   || h.birth_day) {
+                    /* Birth date is BCD packed YYYYMMDD; the hex digits of
+                     * each byte ARE the decimal digits, so %02X reads as
+                     * the human number. */
+                    furi_string_cat_printf(
+                        s, "Ne(e) le  %02X/%02X/%02X%02X\n",
+                        h.birth_day, h.birth_month,
+                        h.birth_year_top2, h.birth_year_bot2);
+                }
+            }
+            furi_string_cat_str(s, "\n");
+        } else {
+            furi_string_cat_str(s, "Fichier titulaire\nillisible.\n\n");
+        }
+    }
+
+    /* Then add what the Environment record carries (postal code is here). */
+    CalypsoEnvironment env;
+    if(parse_env(d, &env) && env.holder_postal_code) {
+        furi_string_cat_printf(s, "Code postal  %u\n", env.holder_postal_code);
+    }
+
+    if(!d->holder_ext_present) {
+        furi_string_cat_str(s, "Carte anonyme.\n\n");
+        furi_string_cat_str(s, "La MOBIB Basic ne\n");
+        furi_string_cat_str(s, "contient pas de\n");
+        furi_string_cat_str(s, "donnees titulaire.\n");
+        furi_string_cat_str(s, "Les cartes nominatives\n");
+        furi_string_cat_str(s, "(SNCB / TEC / De Lijn)\n");
+        furi_string_cat_str(s, "exposent nom et sexe\n");
+        furi_string_cat_str(s, "dans HOLDER_EXTENDED.\n");
+    }
+}
+
+/* ----------------------------- Contracts ---------------------------- */
+
+static void format_contracts(const MobibDump* d, FuriString* s) {
+    append_divider(s, "ABONNEMENTS");
+
+    size_t shown = 0;
+    for(size_t i = 0; i < d->record_count; ++i) {
+        const MobibRecord* r = &d->records[i];
+        if(r->sfi != 0x09) continue;
+        CalypsoContract c;
+        if(!calypso_contract_parse(r->data, r->len, &c)) continue;
+
+        shown++;
+        furi_string_cat_printf(s, "Emplacement %u\n", (unsigned)r->record);
+
+        const char* tname = calypso_contract_tariff_name(c.tariff);
+        if(tname) {
+            furi_string_cat_printf(s, "  %s\n", tname);
+        } else {
+            furi_string_cat_printf(s, "  Tarif 0x%04X\n", c.tariff);
+        }
+
+        if(c.flags & CALYPSO_CONTRACT_HAS_SALE && c.sale_year) {
+            furi_string_cat_printf(s, "  Achete le %02u/%02u/%04u\n",
+                c.sale_day, c.sale_month, c.sale_year);
+        }
+        if(c.flags & CALYPSO_CONTRACT_HAS_DURATION) {
+            /* metrodroid documents 0/1/2. Units 3 means months on real
+             * 2023-2026 STIB cards: a 49 EUR monthly pass reads 1, the
+             * yearly pass 12 (see contract_end). */
+            const char* unit = "?";
+            switch(c.duration_units) {
+            case 0: unit = "jours";    break;
+            case 1: unit = "semaines"; break;
+            case 2:
+            case 3: unit = "mois";     break;
+            }
+            furi_string_cat_printf(s, "  Duree %u %s\n", c.duration, unit);
+        }
+        if(c.flags & CALYPSO_CONTRACT_HAS_PRICE && c.price_amount) {
+            /* Calypso stores the price in cents (centimes) per metrodroid's
+             * En1545LookupSTR.parseCurrency → TransitCurrency.EUR(price). */
+            furi_string_cat_printf(
+                s, "  Prix %u,%02u EUR\n",
+                c.price_amount / 100, c.price_amount % 100);
+        }
+        furi_string_cat_str(s, "\n");
+    }
+    if(shown == 0) furi_string_cat_str(s, "Aucun abonnement actif.\n");
+}
+
+/* ----------------------------- Journeys ----------------------------- */
+
 static void format_journeys(const MobibDump* d, FuriString* s) {
-    append_divider(s, "JOURNEYS");
+    append_divider(s, "TRAJETS");
 
     /* Collect all parseable events. */
     CalypsoEvent events[MOBIB_DUMP_RECORD_MAX];
@@ -284,77 +415,68 @@ static void format_journeys(const MobibDump* d, FuriString* s) {
     }
 
     if(count == 0) {
-        furi_string_cat_str(s, "No journeys logged.\n");
+        furi_string_cat_str(s, "Aucun trajet.\n");
         return;
     }
 
     for(size_t i = 0; i < count; ++i) {
         const CalypsoEvent* e = &events[i];
 
-        /* Date line. */
+        if(i > 0) furi_string_cat_str(s, "----------------------\n");
+
+        /* 1. Date - heure. */
         if(e->event_year) {
             furi_string_cat_printf(
-                s, "%04u-%02u-%02u  %02u:%02u\n",
-                e->event_year, e->event_month, e->event_day,
+                s, "%02u/%02u/%04u - %02u:%02u\n",
+                e->event_day, e->event_month, e->event_year,
                 e->event_hour, e->event_minute);
         } else {
-            furi_string_cat_str(s, "(date invalid)\n");
+            furi_string_cat_str(s, "(date invalide)\n");
         }
 
-        /* Provider + location line. */
-        if(e->flags & CALYPSO_EVENT_HAS_PROVIDER) {
-            const char* prov = calypso_event_provider_name(e->service_provider);
-            if(prov) {
-                furi_string_cat_printf(s, "  %s", prov);
-            } else {
-                furi_string_cat_printf(s, "  Mode %u", e->service_provider);
-            }
+        JourneyInfo j;
+        journey_describe(e, &j);
+        const bool has_provider = e->flags & CALYPSO_EVENT_HAS_PROVIDER;
 
-            /* Route number is the most useful field for buses/trams. */
-            if(e->flags & CALYPSO_EVENT_HAS_ROUTE && e->route_number) {
-                furi_string_cat_printf(s, " line %u", e->route_number);
-            }
+        /* 2. Mode + ligne. */
+        if(append_journey_mode(s, e, &j)) {
             furi_string_cat_str(s, "\n");
+        } else if(has_provider) {
+            furi_string_cat_printf(s, "Mode inconnu (%u)\n", e->service_provider);
+        }
 
-            /* Try resolvers in order: bus stop (STIB DB, most of the hits),
-             * then metro station (smaller, higher-confidence table), then
-             * fall back to the raw location code. */
-            bool resolved = false;
+        /* 3. Lieu. */
+        if(j.stop) {
+            furi_string_cat_printf(s, "Arret : %s\n", j.stop->name);
+        } else if(j.station) {
+            furi_string_cat_printf(s, "Station : %s\n", j.station->name);
+        } else if(!j.is_metro && e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus) {
+            furi_string_cat_printf(s, "Arret n. %u\n", e->location_id_bus);
+        } else if(has_provider && e->location_id) {
+            furi_string_cat_printf(
+                s, "%s n. %lu\n", j.is_metro ? "Station" : "Lieu", (unsigned long)e->location_id);
+        }
 
-            if(e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus &&
-               e->flags & CALYPSO_EVENT_HAS_ROUTE) {
-                /* zoobab/mobib-extractor: bus line = low 7 bits of ROUTE_NUMBER. */
-                const uint16_t bus_line = e->route_number & 0x7F;
-                const CalypsoBusStop* bs =
-                    calypso_bus_stop_lookup(bus_line, e->location_id_bus);
-                if(bs) {
-                    furi_string_cat_printf(s, "  %s\n", bs->name);
-                    resolved = true;
-                }
-            }
-
-            if(!resolved) {
-                const CalypsoMetroStation* st =
-                    calypso_metro_station_lookup_id(e->location_id);
-                if(st) {
-                    furi_string_cat_printf(s, "  %s \xc2\xb7 %s\n", st->line, st->name);
-                    resolved = true;
-                }
-            }
-
-            if(!resolved) {
-                if(e->flags & CALYPSO_EVENT_HAS_LOCATION_BUS && e->location_id_bus) {
-                    furi_string_cat_printf(s, "  stop %u\n", e->location_id_bus);
-                } else if(e->location_id) {
-                    furi_string_cat_printf(s, "  loc %lu\n",
-                        (unsigned long)e->location_id);
-                }
-            }
+        /* 4. Correspondance: the first validation of the journey differs
+         * from this one when the passenger changed vehicle. */
+        const bool first_differs =
+            (e->flags & CALYPSO_EVENT_HAS_FIRST_STAMP) &&
+            (e->first_stamp_year != e->event_year || e->first_stamp_month != e->event_month ||
+             e->first_stamp_day != e->event_day || e->first_stamp_hour != e->event_hour ||
+             e->first_stamp_minute != e->event_minute);
+        if(first_differs) {
+            furi_string_cat_printf(
+                s, "Correspondance\n  depart a %02u:%02u\n",
+                e->first_stamp_hour, e->first_stamp_minute);
+        } else if(e->flags & CALYPSO_EVENT_HAS_FIRST_STAMP) {
+            furi_string_cat_str(s, "Debut de trajet\n");
+        }
+        if(e->flags & CALYPSO_EVENT_HAS_TRANSFER && e->transfer_number) {
+            furi_string_cat_printf(s, "Correspondance n. %u\n", e->transfer_number);
         }
 
         if(e->flags & CALYPSO_EVENT_HAS_SERIAL) {
-            furi_string_cat_printf(s, "  trip #%lu\n",
-                (unsigned long)e->serial_number);
+            furi_string_cat_printf(s, "Validation n. %lu\n", (unsigned long)e->serial_number);
         }
         furi_string_cat_str(s, "\n");
     }
@@ -363,7 +485,7 @@ static void format_journeys(const MobibDump* d, FuriString* s) {
 /* ------------------------------ Records ----------------------------- */
 
 static void format_records(const MobibDump* d, FuriString* s) {
-    furi_string_cat_printf(s, "=== RECORDS (%zu) ===\n\n", d->record_count);
+    furi_string_cat_printf(s, "=== ENREGISTREMENTS (%zu) ===\n\n", d->record_count);
 
     /* Group by SFI; emit a header when the SFI changes. */
     uint8_t last_sfi = 0xFF;
@@ -387,7 +509,7 @@ static void format_records(const MobibDump* d, FuriString* s) {
         for(size_t b = 0; b < r->len; ++b) if(r->data[b]) { all_zero = false; break; }
 
         if(all_zero) {
-            furi_string_cat_str(s, "(empty)\n");
+            furi_string_cat_str(s, "(vide)\n");
         } else {
             const size_t n = r->len < 16 ? r->len : 16;
             for(size_t b = 0; b < n; ++b) {
@@ -406,7 +528,7 @@ static void format_fci(const MobibDump* d, FuriString* s) {
     append_divider(s, "FCI");
 
     if(!d->calypso_selected || d->fci_len == 0) {
-        furi_string_cat_str(s, "Not available.\n");
+        furi_string_cat_str(s, "Non disponible.\n");
         return;
     }
 
@@ -416,7 +538,7 @@ static void format_fci(const MobibDump* d, FuriString* s) {
         if(fci.is_calypso_aid) {
             furi_string_cat_str(s, "1TIC.ICA\n");
             if(fci.is_mobib_extension) {
-                furi_string_cat_str(s, "      (MOBIB family)\n");
+                furi_string_cat_str(s, "      (famille MOBIB)\n");
             }
             if(fci.has_aid_extension) {
                 furi_string_cat_str(s, "Ext  ");
@@ -441,7 +563,7 @@ static void format_fci(const MobibDump* d, FuriString* s) {
         furi_string_cat_str(s, "\n");
     }
 
-    furi_string_cat_printf(s, "Raw (%zu bytes)\n", d->fci_len);
+    furi_string_cat_printf(s, "Brut (%zu octets)\n", d->fci_len);
     for(size_t i = 0; i < d->fci_len; ++i) {
         furi_string_cat_printf(s, "%02X", d->fci[i]);
         if((i + 1) % 8 == 0) furi_string_cat_str(s, "\n");
@@ -453,21 +575,21 @@ static void format_fci(const MobibDump* d, FuriString* s) {
 /* ------------------------------- Deep scan --------------------------- */
 
 static void format_deep(const MobibDump* d, FuriString* s) {
-    append_divider(s, "DEEP SCAN");
+    append_divider(s, "ANALYSE AVANCEE");
 
-    furi_string_cat_str(s, "Apps present:\n");
+    furi_string_cat_str(s, "Applis presentes :\n");
     furi_string_cat_printf(
-        s, "  1TIC.ICA  %s\n", d->calypso_selected ? "yes" : "no");
+        s, "  1TIC.ICA  %s\n", d->calypso_selected ? "oui" : "non");
     furi_string_cat_printf(
-        s, "  3MTR.ICA  %s\n", d->has_mpp     ? "yes" : "-");
+        s, "  3MTR.ICA  %s\n", d->has_mpp     ? "oui" : "-");
     furi_string_cat_printf(
-        s, "  3TCW.ICA  %s\n", d->has_rt2     ? "yes" : "-");
+        s, "  3TCW.ICA  %s\n", d->has_rt2     ? "oui" : "-");
     furi_string_cat_printf(
-        s, "  2TIC.ICA  %s\n", d->has_eticket ? "yes" : "-");
+        s, "  2TIC.ICA  %s\n", d->has_eticket ? "oui" : "-");
 
-    furi_string_cat_str(s, "\nExtra files:\n");
+    furi_string_cat_str(s, "\nFichiers en plus :\n");
     if(d->extra_count == 0) {
-        furi_string_cat_str(s, "  (none readable)\n");
+        furi_string_cat_str(s, "  (aucun lisible)\n");
     } else {
         for(size_t i = 0; i < d->extra_count; ++i) {
             const MobibExtraFile* e = &d->extras[i];
@@ -485,13 +607,14 @@ static void format_deep(const MobibDump* d, FuriString* s) {
     }
 
     furi_string_cat_str(s,
-        "\nNote: writes to any\n"
-        "Calypso file require\n"
-        "issuer keys held by\n"
-        "STIB/SNCB/TEC/De Lijn\n"
-        "in a hardware SAM.\n"
-        "Cannot be extracted\n"
-        "from the card.\n");
+        "\nNote : ecrire dans un\n"
+        "fichier Calypso exige\n"
+        "les cles de l'emetteur,\n"
+        "stockees par STIB/SNCB/\n"
+        "TEC/De Lijn dans un SAM\n"
+        "materiel. Impossible\n"
+        "de les extraire de la\n"
+        "carte.\n");
 }
 
 /* ------------------------------- public ----------------------------- */
@@ -502,7 +625,7 @@ void mobib_format_section(
     FuriString*       out) {
     furi_string_reset(out);
     if(!dump) {
-        furi_string_set_str(out, "No card loaded.\n");
+        furi_string_set_str(out, "Aucune carte chargee.\n");
         return;
     }
 

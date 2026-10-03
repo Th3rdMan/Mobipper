@@ -10,6 +10,7 @@
 #include "../mobib_app.h"
 #include "../nfc/mobib_nfc.h"
 #include "../storage/mobib_storage.h"
+#include "../ui/mobib_format.h"
 
 #include <notification/notification_messages.h>
 
@@ -34,10 +35,10 @@ static void mobib_scan_render_waiting(MobibApp* app) {
     Widget* w = app->widget;
     widget_reset(w);
     widget_add_text_box_element(
-        w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#Scanning…\e#", false);
+        w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#Lecture...\e#", false);
     widget_add_string_multiline_element(
         w, 64, 36, AlignCenter, AlignCenter, FontSecondary,
-        "Hold MOBIB card\nflat against the\nback of the Flipper");
+        "Pose la carte MOBIB\na plat contre le\ndos du Flipper");
 }
 
 void mobib_scene_scan_on_enter(void* context) {
@@ -66,11 +67,15 @@ bool mobib_scene_scan_on_event(void* context, SceneManagerEvent event) {
 
         /* Persist to SD; failure is non-fatal — the user can still browse. */
         if(!mobib_storage_save_dump(&app->dump, app->dump_path)) {
-            furi_string_set(app->dump_path, "<save failed>");
+            furi_string_set(app->dump_path, "<echec sauvegarde>");
         }
 
-        /* Replace ourselves with the overview scene so back jumps to start. */
+        /* Open the card menu with the overview already displayed on top:
+         * back from the overview lands on the section menu. */
+        scene_manager_set_scene_state(
+            app->scene_manager, MobibSceneCard, MobibSectionOverview);
         scene_manager_next_scene(app->scene_manager, MobibSceneCard);
+        scene_manager_next_scene(app->scene_manager, MobibSceneCardSection);
         return true;
     case ScanCustomEventError:
         return true;

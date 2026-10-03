@@ -19,10 +19,10 @@ static const struct {
     uint16_t    raw;        /**< 12-bit raw value, identical to BCD digits. */
     const char* name;
 } kCountries[] = {
-    {0x056, "Belgium"},
+    {0x056, "Belgique"},
     {0x250, "France"},
-    {0x528, "Netherlands"},
-    {0x380, "Italy"},
+    {0x528, "Pays-Bas"},
+    {0x380, "Italie"},
     {0,     NULL},
 };
 

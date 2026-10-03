@@ -9,7 +9,7 @@ App(
     fap_category="NFC",
     fap_author="i12bp8",
     fap_version="0.1",
-    fap_description="Read and explore Belgian MOBIB transit cards (Calypso).",
+    fap_description="Lire et explorer les cartes de transport belges MOBIB (Calypso).",
     sources=[
         "application/mobib_app.c",
         "application/calypso/calypso.c",

@@ -22,7 +22,14 @@ void mobib_scene_dumps_on_enter(void* context) {
     opts.base_path = MOBIB_DUMP_DIR;
 
     FuriString* selected = furi_string_alloc();
-    FuriString* preselect = furi_string_alloc_set(MOBIB_DUMP_DIR);
+    /* Preselect a file, not the folder: given a folder, the Momentum
+     * browser parks the cursor on ".." and one OK leaves the dumps dir. */
+    FuriString* preselect = furi_string_alloc();
+    if(furi_string_start_with_str(app->dump_path, MOBIB_DUMP_DIR "/")) {
+        furi_string_set(preselect, app->dump_path);
+    } else {
+        mobib_storage_first_dump(preselect);
+    }
 
     const bool picked = dialog_file_browser_show(dialogs, selected, preselect, &opts);
     furi_string_free(preselect);

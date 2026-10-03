@@ -5,6 +5,7 @@
 #include "mobib_storage.h"
 
 #include <furi.h>
+#include <string.h>
 #include <furi_hal_rtc.h>
 #include <datetime/datetime.h>
 #include <storage/storage.h>
@@ -20,23 +21,89 @@ static void mobib_storage_format_pupi(const MobibCardInfo* card, FuriString* out
     if(card->pupi_len == 0) furi_string_set_str(out, "UNKNOWN");
 }
 
+bool mobib_dump_holder(const MobibDump* dump, CalypsoHolder* out) {
+    if(!dump->holder_ext_present) return false;
+
+    /* Each HOLDER_EXTENDED record contains 29 bytes of payload; the
+     * Calypso layer pads responses to 32 bytes. Concatenating the
+     * full 32-byte slots leaves three zero bytes embedded in the
+     * middle of the name field and breaks the bit alignment. We
+     * trim to 29 bytes per record to match metrodroid / zoobab. */
+    const size_t kRealRecLen = 29;
+
+    uint8_t flat[MOBIB_HOLDER_EXT_RECS * 29];
+    size_t flat_len = 0;
+    for(size_t i = 0; i < MOBIB_HOLDER_EXT_RECS; ++i) {
+        size_t n = dump->holder_ext_len[i];
+        if(n > kRealRecLen) n = kRealRecLen;
+        if(n > 0) {
+            memcpy(&flat[flat_len], dump->holder_ext[i], n);
+            flat_len += n;
+        }
+    }
+    return calypso_holder_parse(flat, flat_len, out) && out->valid;
+}
+
+bool mobib_holder_display_name(const CalypsoHolder* holder, FuriString* out) {
+    furi_string_reset(out);
+
+    /* The card stores "FIRSTNAME<sep>SURNAME" (separator rendered as a
+     * space by the 5-bit decoder). Everything after the first separator
+     * is the surname, so compound surnames ("VAN DAMME") stay whole. */
+    const char* name = holder->name;
+    const char* sep = strchr(name, ' ');
+    if(!sep) {
+        furi_string_set_str(out, name);
+        return !furi_string_empty(out);
+    }
+
+    const char* surname = sep;
+    while(*surname == ' ') surname++;
+    furi_string_set_str(out, surname);
+    furi_string_push_back(out, ' ');
+
+    /* First name capitalised: "KEVIN" -> "Kevin". */
+    for(const char* c = name; c < sep; ++c) {
+        furi_string_push_back(out, c == name ? *c : (char)(*c - 'A' + 'a'));
+    }
+    furi_string_trim(out);
+    return !furi_string_empty(out);
+}
+
 static void mobib_storage_build_path(
+    Storage* storage,
     const MobibDump* dump,
     const DateTime* now,
     FuriString* path_out) {
-    FuriString* pupi = furi_string_alloc();
-    mobib_storage_format_pupi(&dump->card, pupi);
+    CalypsoHolder holder;
+    FuriString* name = furi_string_alloc();
 
-    furi_string_printf(
-        path_out,
-        "%s/%s_%04u%02u%02uT%02u%02u%02u%s",
-        MOBIB_DUMP_DIR,
-        furi_string_get_cstr(pupi),
-        now->year, now->month, now->day,
-        now->hour, now->minute, now->second,
-        MOBIB_DUMP_EXT);
+    if(mobib_dump_holder(dump, &holder) && mobib_holder_display_name(&holder, name)) {
+        furi_string_printf(
+            path_out, "%s/%s%s", MOBIB_DUMP_DIR, furi_string_get_cstr(name), MOBIB_DUMP_EXT);
+        for(unsigned n = 2; storage_common_exists(storage, furi_string_get_cstr(path_out));
+            ++n) {
+            furi_string_printf(
+                path_out,
+                "%s/%s %u%s",
+                MOBIB_DUMP_DIR,
+                furi_string_get_cstr(name),
+                n,
+                MOBIB_DUMP_EXT);
+        }
+    } else {
+        mobib_storage_format_pupi(&dump->card, name);
+        furi_string_printf(
+            path_out,
+            "%s/%s_%04u%02u%02uT%02u%02u%02u%s",
+            MOBIB_DUMP_DIR,
+            furi_string_get_cstr(name),
+            now->year, now->month, now->day,
+            now->hour, now->minute, now->second,
+            MOBIB_DUMP_EXT);
+    }
 
-    furi_string_free(pupi);
+    furi_string_free(name);
 }
 
 static bool mobib_storage_write_card(FlipperFormat* ff, const MobibCardInfo* card) {
@@ -145,7 +212,7 @@ bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out) {
     furi_hal_rtc_get_datetime(&now);
 
     FuriString* path = furi_string_alloc();
-    mobib_storage_build_path(dump, &now, path);
+    mobib_storage_build_path(storage, dump, &now, path);
 
     FlipperFormat* ff = flipper_format_file_alloc(storage);
     bool ok = false;
@@ -178,6 +245,36 @@ bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out) {
     furi_string_free(path);
     furi_record_close(RECORD_STORAGE);
     return ok;
+}
+
+void mobib_storage_first_dump(FuriString* path_out) {
+    furi_string_set_str(path_out, MOBIB_DUMP_DIR);
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    File* dir = storage_file_alloc(storage);
+    FuriString* best = furi_string_alloc();
+    char name[128];
+
+    if(storage_dir_open(dir, MOBIB_DUMP_DIR)) {
+        FileInfo info;
+        while(storage_dir_read(dir, &info, name, sizeof(name))) {
+            if(file_info_is_dir(&info)) continue;
+            const size_t n = strlen(name);
+            const size_t e = strlen(MOBIB_DUMP_EXT);
+            if(n <= e || strcmp(name + n - e, MOBIB_DUMP_EXT) != 0) continue;
+            if(furi_string_empty(best) || strcasecmp(name, furi_string_get_cstr(best)) < 0) {
+                furi_string_set_str(best, name);
+            }
+        }
+    }
+    storage_dir_close(dir);
+    storage_file_free(dir);
+    furi_record_close(RECORD_STORAGE);
+
+    if(!furi_string_empty(best)) {
+        furi_string_printf(path_out, "%s/%s", MOBIB_DUMP_DIR, furi_string_get_cstr(best));
+    }
+    furi_string_free(best);
 }
 
 /* ----------------------------------------------------------------- load */

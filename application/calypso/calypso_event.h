@@ -46,6 +46,7 @@
 #define CALYPSO_EVENT_HAS_PROVIDER      (1u << 2)
 #define CALYPSO_EVENT_HAS_SERIAL        (1u << 3)
 #define CALYPSO_EVENT_HAS_FIRST_STAMP   (1u << 4)
+#define CALYPSO_EVENT_HAS_TRANSFER      (1u << 5)
 
 /* Service provider codes used by MOBIB. Cross-referenced between
  * metrodroid (MobibLookup.kt: BUS=0x0F, TRAM=0x16) and zoobab's
@@ -77,6 +78,7 @@ typedef struct {
     uint8_t  service_provider;
     uint32_t location_id;
     uint32_t serial_number;
+    uint8_t  transfer_number;
 
     uint16_t first_stamp_year;
     uint8_t  first_stamp_month;

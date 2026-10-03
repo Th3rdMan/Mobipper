@@ -15,10 +15,10 @@ static bool buffer_is_all_zero(const uint8_t* buf, size_t len) {
 
 const char* calypso_contract_tariff_name(uint16_t tariff) {
     switch(tariff) {
-    case CALYPSO_TARIFF_JUMP_1_TRIP:          return "Jump 1 trip";
-    case CALYPSO_TARIFF_JUMP_10_TRIPS:        return "Jump 10 trips";
-    case CALYPSO_TARIFF_AIRPORT_BUS:          return "Airport bus";
-    case CALYPSO_TARIFF_JUMP_24H_BUS_AIRPORT: return "Jump 24h + airport";
+    case CALYPSO_TARIFF_JUMP_1_TRIP:          return "Jump 1 voyage";
+    case CALYPSO_TARIFF_JUMP_10_TRIPS:        return "Jump 10 voyages";
+    case CALYPSO_TARIFF_AIRPORT_BUS:          return "Bus aeroport";
+    case CALYPSO_TARIFF_JUMP_24H_BUS_AIRPORT: return "Jump 24h + aeroport";
     default:                                  return NULL;
     }
 }
