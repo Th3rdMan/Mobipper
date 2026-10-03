@@ -40,7 +40,7 @@ La table des arrêts est issue du réseau **STIB** : en dehors de Bruxelles, les
 
 ## 📸 Démonstration
 
-Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, commune, date de naissance, numéro de carte et trajets inventés — *BLECHMAN Reginald*, clin d'œil à Wrench de *Watch Dogs 2*).
+Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, commune, date de naissance, numéro de carte et trajets inventés — *BLECHMAN Reginald*).
 
 | | | |
 |:---:|:---:|:---:|
