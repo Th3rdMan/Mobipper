@@ -20,7 +20,7 @@ void mobib_scene_start_on_enter(void* context) {
     Submenu*  m   = app->submenu;
 
     submenu_reset(m);
-    submenu_set_header(m, "MOBIB");
+    submenu_set_header(m, "Mobipper");
     submenu_add_item(m, "Lire une carte", StartSubmenuRead,   mobib_scene_start_submenu_cb, app);
     submenu_add_item(m, "Sauvegardes",    StartSubmenuBrowse, mobib_scene_start_submenu_cb, app);
     submenu_add_item(m, "A propos",       StartSubmenuAbout,  mobib_scene_start_submenu_cb, app);

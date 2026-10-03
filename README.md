@@ -1,12 +1,14 @@
-# 🚇 flipper-mobib FR – Lecteur de cartes MOBIB pour Flipper Zero
+# 🐬 Mobipper – Lecteur de cartes MOBIB pour Flipper Zero
 
-![Version](https://img.shields.io/badge/Version-0.1--fr-blue)
+<p align="center"><img src="docs/social_preview.png" alt="Mobipper"></p>
+
+![Version](https://img.shields.io/badge/Version-0.1-blue)
 ![License](https://img.shields.io/badge/License-GPL--3.0-teal)
 ![Firmware](https://img.shields.io/badge/Firmware-Momentum_mntm--012-orange)
 [![Author: Th3rd](https://img.shields.io/badge/github-Th3rdMan-181717?logo=github)](https://github.com/Th3rdMan)
 [![Based on: flipper-mobib](https://img.shields.io/badge/based_on-i12bp8%2Fflipper--mobib-555)](https://github.com/i12bp8/flipper-mobib)
 
-**flipper-mobib FR** est une application [Flipper Zero](https://flipperzero.one/) qui lit et décode les cartes de transport belges **MOBIB** — la carte sans contact Calypso / ISO 14443-B partagée par la **STIB/MIVB**, la **SNCB/NMBS**, **De Lijn** et le **TEC**.  
+**Mobipper** (MOBIB + Flipper) est une application [Flipper Zero](https://flipperzero.one/) qui lit et décode les cartes de transport belges **MOBIB** — la carte sans contact Calypso / ISO 14443-B partagée par la **STIB/MIVB**, la **SNCB/NMBS**, **De Lijn** et le **TEC**.  
 Il suffit de poser la carte contre le dos du Flipper : l'application lit tous les fichiers accessibles, décode les informations utiles (titulaire, abonnements, derniers trajets) et sauvegarde la lecture sur la carte SD.
 
 > Construit sur la base de [flipper-mobib](https://github.com/i12bp8/flipper-mobib) par **i12bp8**, traduit en français, réorganisé et enrichi.
@@ -100,7 +102,7 @@ Derniere utilisation :
 
 ## 🎯 Objectif
 
-flipper-mobib FR est conçu pour **lire ses propres cartes** et comprendre ce qu'elles contiennent, dans un cadre de curiosité, d'interopérabilité ou de recherche.
+Mobipper est conçu pour **lire ses propres cartes** et comprendre ce qu'elles contiennent, dans un cadre de curiosité, d'interopérabilité ou de recherche.
 
 L'application est **en lecture seule** par conception :
 
@@ -148,8 +150,8 @@ Firmware cible : **Momentum** (testé sur `mntm-012`, API 87.1).
 
 **Compilation avec [`ufbt`](https://github.com/flipperdevices/flipperzero-ufbt) :**
 ```bash
-git clone https://github.com/Th3rdMan/flipper-mobib.git
-cd flipper-mobib
+git clone https://github.com/Th3rdMan/mobipper.git
+cd mobipper
 pip install ufbt
 ufbt update --hw-target=f7 --url=https://up.momentum-fw.dev/builds/firmware/mntm-012/flipper-z-f7-sdk-mntm-012.zip
 ufbt              # compile dist/mobib.fap
@@ -174,7 +176,7 @@ python tools/postal_codes.py postal_codes.csv files/postal_codes.txt --report
 
 ## 🧭 Utilisation
 
-1. Ouvrir **Apps → NFC → MOBIB**.
+1. Ouvrir **Apps → NFC → Mobipper**.
 
 2. Choisir **Lire une carte** et poser la carte MOBIB à plat contre le dos du Flipper.
 

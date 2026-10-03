@@ -10,7 +10,7 @@ void mobib_scene_about_on_enter(void* context) {
 
     widget_reset(w);
     widget_add_text_box_element(
-        w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#MOBIB\e#", false);
+        w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#Mobipper\e#", false);
     widget_add_text_scroll_element(
         w, 0, 16, 128, 48,
         "Lecteur NFC de cartes\n"
@@ -50,12 +50,12 @@ void mobib_scene_about_on_enter(void* context) {
         "metrodroid/metrodroid\n"
         "(GPL-3.0).\n"
         "\n"
-        "flipper-mobib v0.1-fr\n"
+        "Mobipper v0.1\n"
         "GPL-3.0-or-later\n"
         "\n"
-        "Version FR par Th3rd\n"
+        "Par Th3rd\n"
         "github.com/Th3rdMan\n"
-        "/flipper-mobib\n"
+        "/mobipper\n"
         "\n"
         "D'apres i12bp8\n"
         "github.com/i12bp8\n"

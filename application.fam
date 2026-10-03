@@ -1,6 +1,6 @@
 App(
     appid="mobib",
-    name="MOBIB",
+    name="Mobipper",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="mobib_app_main",
     requires=["gui", "notification", "storage", "nfc"],
