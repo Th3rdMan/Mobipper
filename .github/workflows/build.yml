@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Momentum mntm-012
+            slug: momentum
+            sdk-url: https://up.momentum-fw.dev/builds/firmware/mntm-012/flipper-z-f7-sdk-mntm-012.zip
+            sdk-channel: ""
+          - name: Officiel release
+            slug: officiel
+            sdk-url: ""
+            sdk-channel: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilation ufbt
+        id: build
+        uses: flipperdevices/flipperzero-ufbt-action@v0.1.4
+        with:
+          sdk-url: ${{ matrix.sdk-url }}
+          sdk-channel: ${{ matrix.sdk-channel }}
+          sdk-hw-target: f7
+
+      - name: Nommage du .fap
+        run: cp "${{ steps.build.outputs.fap-dir }}/mobipper.fap" "mobipper-${{ matrix.slug }}.fap"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobipper-${{ matrix.slug }}
+          path: mobipper-${{ matrix.slug }}.fap
+
+  release:
+    name: Release GitHub
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Notes de version (extrait du CHANGELOG)
+        run: |
+          version="${GITHUB_REF_NAME}"
+          awk -v v="## ${version} " 'index($0, v) == 1 {f = 1; next} /^## v/ {f = 0} f' CHANGELOG.md > notes.md
+          cat notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Mobipper ${{ github.ref_name }}
+          body_path: notes.md
+          files: dist/*.fap
