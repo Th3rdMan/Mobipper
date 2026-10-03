@@ -174,32 +174,61 @@ static int compare_events_desc(const CalypsoEvent* a, const CalypsoEvent* b) {
 static void format_overview(const MobibDump* d, FuriString* s) {
     append_divider(s, "CARTE MOBIB");
 
-    /* Holder name first, when the card is personalised. */
-    CalypsoHolder holder;
-    FuriString* name = furi_string_alloc();
-    if(mobib_dump_holder(d, &holder) && mobib_holder_display_name(&holder, name)) {
-        furi_string_cat_printf(s, "%s\n", furi_string_get_cstr(name));
-    }
-    furi_string_free(name);
-
-    furi_string_cat_str(s, "Carte n. ");
-    append_pupi_compact(s, &d->card);
-    furi_string_cat_str(s, "\n\n");
-
     CalypsoEnvironment env;
-    if(parse_env(d, &env)) {
-        if(env.validity_end_year) {
+    const bool have_env = parse_env(d, &env);
+
+    /* Holder block, when the card is personalised: name, commune, birth. */
+    CalypsoHolder holder;
+    const bool have_holder = mobib_dump_holder(d, &holder);
+    bool holder_block = false;
+    FuriString* tmp = furi_string_alloc();
+    if(have_holder && mobib_holder_display_name(&holder, tmp)) {
+        furi_string_cat_printf(s, "%s\n", furi_string_get_cstr(tmp));
+        holder_block = true;
+    }
+    if(have_env && env.holder_postal_code) {
+        if(mobib_postal_lookup(env.holder_postal_code, tmp)) {
             furi_string_cat_printf(
-                s, "Valable jusqu'au %02u/%02u/%04u\n",
-                env.validity_end_day, env.validity_end_month, env.validity_end_year);
+                s, "%u %s\n", env.holder_postal_code, furi_string_get_cstr(tmp));
+        } else {
+            furi_string_cat_printf(s, "%u\n", env.holder_postal_code);
         }
+        holder_block = true;
+    }
+    furi_string_free(tmp);
+    if(have_holder &&
+       (holder.birth_year_top2 || holder.birth_year_bot2 || holder.birth_month ||
+        holder.birth_day)) {
+        /* BCD packed YYYYMMDD: %02X prints the decimal digits. */
+        furi_string_cat_printf(
+            s,
+            "%s le %02X/%02X/%02X%02X\n",
+            holder.gender == 2 ? "Nee" : "Ne",
+            holder.birth_day,
+            holder.birth_month,
+            holder.birth_year_top2,
+            holder.birth_year_bot2);
+        holder_block = true;
+    }
+    if(holder_block) furi_string_cat_str(s, "\n");
+
+    /* Card block. */
+    if(have_env) {
         if(env.network_name) {
             furi_string_cat_printf(s, "Reseau %s\n", env.network_name);
         } else {
             furi_string_cat_printf(s, "Reseau 0x%03X\n", env.network_id);
         }
-        furi_string_cat_str(s, "\n");
     }
+    furi_string_cat_str(s, "Carte n. ");
+    append_pupi_compact(s, &d->card);
+    furi_string_cat_str(s, "\n");
+    if(have_env && env.validity_end_year) {
+        furi_string_cat_printf(
+            s, "Valable jusqu'au %02u/%02u/%04u\n",
+            env.validity_end_day, env.validity_end_month, env.validity_end_year);
+    }
+    furi_string_cat_str(s, "\n");
 
     /* Counts, latest subscription end and latest journey in one pass. */
     size_t contracts = 0, journeys = 0;

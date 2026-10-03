@@ -57,6 +57,17 @@ bool mobib_holder_display_name(const CalypsoHolder* holder, FuriString* out);
  */
 bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out);
 
+/** Postal code table shipped as an app asset ("CODE;Commune" lines). */
+#define MOBIB_POSTAL_CODES_PATH APP_ASSETS_PATH("postal_codes.txt")
+
+/**
+ * @brief Look up the commune of a Belgian postal code.
+ *
+ * @return false (and empty `commune`) if the code is unknown or the asset
+ *         file is missing.
+ */
+bool mobib_postal_lookup(uint16_t code, FuriString* commune);
+
 /**
  * @brief Path of the alphabetically first dump, or MOBIB_DUMP_DIR if none.
  */

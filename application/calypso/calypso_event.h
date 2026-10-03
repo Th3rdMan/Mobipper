@@ -15,7 +15,8 @@
  *   bits 31.. 61   EVENT_UNKNOWN_B1               31 bits
  *
  *   bitmap1: 5 bits, LSB-first selects:
- *     0: container { unknown 4 + LOCATION_ID_BUS 12 }   (16 bits)
+ *     0: LOCATION_ID_BUS = STIB stop id                (16 bits;
+ *        metrodroid splits it 4 unknown + 12, but real ids exceed 4095)
  *     1: ROUTE_NUMBER                                   (16 bits)
  *     2: NeverSeen2                                     (16 bits)
  *     3: NeverSeen3                                     (16 bits)

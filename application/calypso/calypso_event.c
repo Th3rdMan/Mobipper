@@ -57,8 +57,10 @@ bool calypso_event_parse(const uint8_t* rec, size_t rec_len, CalypsoEvent* out) 
     const uint32_t bm1 = bitmap_read(&b, 5);
 
     if(bm1 & 0x01) {
-        calypso_bits_skip(&b, 4);                               /* unknown */
-        out->location_id_bus = (uint16_t)calypso_bits_read(&b, 12);
+        /* metrodroid reads 4 unknown bits + a 12-bit stop id, but the
+         * STIB stop id spans all 16 bits: tram 19 at "Place Reine Astrid"
+         * (GTFS stop 6866) reads as 0x1 + 0xAD2 on a 2026 card. */
+        out->location_id_bus = (uint16_t)calypso_bits_read(&b, 16);
         out->flags |= CALYPSO_EVENT_HAS_LOCATION_BUS;
     }
     if(bm1 & 0x02) {

@@ -10,6 +10,7 @@
 #include <datetime/datetime.h>
 #include <storage/storage.h>
 #include <flipper_format/flipper_format.h>
+#include <toolbox/stream/file_stream.h>
 
 #define TAG "MobibStorage"
 
@@ -245,6 +246,32 @@ bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out) {
     furi_string_free(path);
     furi_record_close(RECORD_STORAGE);
     return ok;
+}
+
+bool mobib_postal_lookup(uint16_t code, FuriString* commune) {
+    furi_string_reset(commune);
+    if(!code) return false;
+
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    Stream* stream = file_stream_alloc(storage);
+    FuriString* line = furi_string_alloc();
+    char prefix[8];
+    snprintf(prefix, sizeof(prefix), "%u;", code);
+
+    if(file_stream_open(stream, MOBIB_POSTAL_CODES_PATH, FSAM_READ, FSOM_OPEN_EXISTING)) {
+        while(stream_read_line(stream, line)) {
+            if(!furi_string_start_with_str(line, prefix)) continue;
+            furi_string_set_n(commune, line, strlen(prefix), furi_string_size(line) - strlen(prefix));
+            furi_string_trim(commune);
+            break;
+        }
+    }
+
+    furi_string_free(line);
+    file_stream_close(stream);
+    stream_free(stream);
+    furi_record_close(RECORD_STORAGE);
+    return !furi_string_empty(commune);
 }
 
 void mobib_storage_first_dump(FuriString* path_out) {

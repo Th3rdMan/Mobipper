@@ -23,7 +23,11 @@ Il suffit de poser la carte contre le dos du Flipper : l'application lit tous le
 
 - 📋 **Résumé affiché dès la lecture**  
   Après un scan, l'essentiel apparaît immédiatement, sans passer par les menus :  
-  titulaire, validité de la carte, fin de l'abonnement en cours, dernier voyage.
+  titulaire, commune, date de naissance, validité de la carte, fin de l'abonnement en cours, dernier voyage.
+
+- 📮 **Code postal → commune**  
+  Le code postal du titulaire est traduit en nom de commune (`1090 Jette`) grâce à une base de **1187 codes postaux belges** (bpost).  
+  La base est livrée comme fichier d'assets (`files/postal_codes.txt`) : installée sur la carte SD au premier lancement, elle ne consomme pas de RAM.
 
 - 💾 **Sauvegardes nommées `NOM Prenom`**  
   Chaque lecture est enregistrée dans `/ext/apps_data/mobib/dumps/` sous le nom du titulaire (`DUPONT Jean.mobibdump`), avec un suffixe numérique si le nom existe déjà (`DUPONT Jean 2`).  
@@ -62,19 +66,23 @@ Données fictives :
 === CARTE MOBIB ===
 
 DUPONT Jean
-Carte n. 1A2B3C4D
+1000 Bruxelles
+Ne le 15/03/1990
 
-Valable jusqu'au 12/05/2029
 Reseau MOBIB
+Carte n. 1A2B3C4D
+Valable jusqu'au 12/05/2029
 
 Abonnement 31/10/2026
-Dernier voyage : Merode
-02/10 17:26 - Metro 1
+Dernier voyage :
+  Place Reine Astrid
+02/10 17:26 - Tram 19
 
 1 abonnement
 4 trajets
 ```
 
+- **Titulaire** : nom, commune (code postal + nom), date de naissance (`Ne le` / `Nee le`). Chaque ligne n'apparaît que si la carte contient l'information.
 - **Abonnement** : date de fin estimée de l'abonnement le plus récent (date d'achat + durée − 1 jour). Les tickets Jump ne sont pas comptés. `(echu)` est ajouté si la date est dépassée.
 - **Dernier voyage** : le nom de l'arrêt n'apparaît que s'il est reconnu ; un nom long passe à la ligne suivante.
 
@@ -101,11 +109,13 @@ Toute écriture Calypso exige une session authentifiée avec les clés des opér
 |--------|--------|------------|
 | Arrêts bus / tram / métro (ligne + numéro STIB) | GTFS STIB-MIVB, [data.belgianmobility.io](https://data.belgianmobility.io), 03/10/2026 | 97 % des couples (ligne, arrêt) communs avec la table 2009 portent le même nom |
 | Stations de métro (zone / sous-zone / station) | [zoobab/mobib-extractor](https://github.com/zoobab/mobib-extractor) (2009) | inchangée |
+| Codes postaux → communes | bpost / NGI-IGN, [Open Data Wallonie-Bruxelles](https://www.odwb.be/explore/dataset/postal-codes-belgium/), 05/09/2025 | 1187 codes ; noms FR, sinon NL / DE |
 | Structure des champs (titulaire, trajets, abonnements) | [metrodroid](https://github.com/metrodroid/metrodroid) | vérifiée sur des cartes réelles 2024-2026 |
 
 Points vérifiés sur des cartes réelles :
 
 - le nom est stocké `PRENOM` + séparateur + `NOM` ;
+- le numéro d'arrêt bus / tram occupe **16 bits** (metrodroid n'en lit que 12) : sans cela, les arrêts au-delà de 4095 étaient introuvables ;
 - le code transporteur `0` correspond au **métro** ;
 - l'unité de durée `3` des abonnements correspond à des **mois** (abonnement de 49 EUR = 1, abonnement annuel = 12).
 
@@ -144,6 +154,12 @@ Le fichier `dist/mobib.fap` peut aussi être copié manuellement dans `/ext/apps
 python tools/gtfs_stops.py gtfs application/calypso/calypso_bus_table.inc nouvelle_table.inc
 ```
 
+**Mise à jour des codes postaux :**
+```bash
+# export CSV (séparateur ;) de https://www.odwb.be/explore/dataset/postal-codes-belgium/
+python tools/postal_codes.py postal_codes.csv files/postal_codes.txt --report
+```
+
 ---
 
 ## 🧭 Utilisation
@@ -173,7 +189,8 @@ Remerciements également à :
 
 - [**metrodroid**](https://github.com/metrodroid/metrodroid) — structures des champs MOBIB / Calypso (GPL-3.0) ;
 - [**zoobab/mobib-extractor**](https://github.com/zoobab/mobib-extractor) — table des stations de métro ;
-- **STIB-MIVB** — données des arrêts, © STIB-MIVB, licence [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- **STIB-MIVB** — données des arrêts, © STIB-MIVB, licence [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ;
+- **bpost** / **NGI-IGN** — liste des codes postaux belges, via [Open Data Wallonie-Bruxelles](https://www.odwb.be/explore/dataset/postal-codes-belgium/).
 
 Sans lien avec la STIB/MIVB, la SNCB/NMBS, De Lijn, le TEC ou Calypso Networks Association. À utiliser uniquement sur ses propres cartes, dans le respect des lois sur la RFID et les données personnelles.
 
