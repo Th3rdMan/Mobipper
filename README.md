@@ -2,9 +2,10 @@
 
 <p align="center"><img src="docs/social_preview.png" alt="Mobipper"></p>
 
-![Version](https://img.shields.io/badge/Version-0.1-blue)
+[![Release](https://img.shields.io/github/v/release/Th3rdMan/Mobipper?label=Release&color=blue)](https://github.com/Th3rdMan/Mobipper/releases/latest)
+[![Build](https://github.com/Th3rdMan/Mobipper/actions/workflows/build.yml/badge.svg)](https://github.com/Th3rdMan/Mobipper/actions/workflows/build.yml)
 ![License](https://img.shields.io/badge/License-GPL--3.0-teal)
-![Firmware](https://img.shields.io/badge/Firmware-Momentum_mntm--012-orange)
+![Firmware](https://img.shields.io/badge/Firmware-Momentum_%7C_officiel-orange)
 [![Author: Th3rd](https://img.shields.io/badge/github-Th3rdMan-181717?logo=github)](https://github.com/Th3rdMan)
 [![Based on: flipper-mobib](https://img.shields.io/badge/based_on-i12bp8%2Fflipper--mobib-555)](https://github.com/i12bp8/flipper-mobib)
 ![Zone](https://img.shields.io/badge/Zone-Bruxelles_%7C_Belgique-yellow)
@@ -42,6 +43,8 @@ La table des arrêts est issue du réseau **STIB** : en dehors de Bruxelles, les
 
 Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, commune, date de naissance, numéro de carte et trajets inventés — *BLECHMAN Reginald*).
 
+<p align="center"><img src="docs/demo_mobipper.gif" width="512" alt="Navigation dans Mobipper"></p>
+
 | | | |
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/demo_02_menu.png" width="256"><br>Menu principal | <img src="docs/screenshots/demo_03_lecture.png" width="256"><br>Lecture d'une carte | <img src="docs/screenshots/demo_04_sauvegardes.png" width="256"><br>Sauvegardes |
@@ -59,14 +62,18 @@ Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, comm
 
 - 📋 **Résumé affiché dès la lecture**  
   Après un scan, l'essentiel apparaît immédiatement, sans passer par les menus :  
-  titulaire, commune, date de naissance, validité de la carte, fin de l'abonnement en cours, dernier voyage.
+  titulaire, commune, date de naissance, validité de la carte, fin de l'abonnement en cours, voyages restants, dernière utilisation.
+
+- 🎟️ **Voyages restants**  
+  Pour les titres à voyages (Jump 1 / 10 voyages), le nombre de voyages restants est lu dans les compteurs de la carte. Il apparaît dans « Abonnements » et, s'il en reste, dans le résumé.
 
 - 📮 **Code postal → commune**  
   Le code postal du titulaire est traduit en nom de commune (`1090 Jette`) grâce à une base de **1187 codes postaux belges** (bpost).  
   La base est livrée comme fichier d'assets (`files/postal_codes.txt`) : installée sur la carte SD au premier lancement, elle ne consomme pas de RAM.
 
-- 💾 **Sauvegardes nommées `NOM Prenom`**  
-  Chaque lecture est enregistrée dans `/ext/apps_data/mobib/dumps/` sous le nom du titulaire (`DUPONT Jean.mobibdump`), avec un suffixe numérique si le nom existe déjà (`DUPONT Jean 2`).  
+- 💾 **Une sauvegarde par carte, nommée `NOM Prenom`**  
+  Chaque lecture est enregistrée dans `/ext/apps_data/mobipper/dumps/` sous le nom du titulaire (`DUPONT Jean.mobibdump`).  
+  Rescanner la même carte **met à jour** sa sauvegarde (reconnaissance par numéro de carte) ; une autre carte au même nom reçoit un suffixe (`DUPONT Jean 2`).  
   Les cartes anonymes gardent le format `<PUPI>_<date>`.
 
 - 🗑️ **Suppression des sauvegardes**  
@@ -88,7 +95,8 @@ Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, comm
 
 - 🗺️ **Arrêts STIB à jour (2026)**  
   Table régénérée depuis le GTFS officiel STIB-MIVB : **72 lignes** (bus, tram, métro) et **3405 arrêts**, contre 49 lignes de bus en 2009.  
-  Le script [`tools/gtfs_stops.py`](tools/gtfs_stops.py) permet de la régénérer à tout moment.
+  Le script [`tools/gtfs_stops.py`](tools/gtfs_stops.py) permet de la régénérer à tout moment.  
+  Côté métro, la table de 2009 est complétée (Elisabeth, second code de Gare du Midi) et les lignes portent leur numéro actuel (1, 2, 5, 6).
 
 - 🎫 **Abonnements corrigés**  
   L'unité de durée utilisée par les cartes actuelles est interprétée en **mois** (et non en années), ce qui donne des durées et des dates de fin cohérentes.
@@ -151,7 +159,7 @@ Toute écriture Calypso exige une session authentifiée avec les clés des opér
 | Donnée | Source | Validation |
 |--------|--------|------------|
 | Arrêts bus / tram / métro (ligne + numéro STIB) | GTFS STIB-MIVB, [data.belgianmobility.io](https://data.belgianmobility.io), 03/10/2026 | 97 % des couples (ligne, arrêt) communs avec la table 2009 portent le même nom |
-| Stations de métro (zone / sous-zone / station) | [zoobab/mobib-extractor](https://github.com/zoobab/mobib-extractor) (2009) | inchangée |
+| Stations de métro (zone / sous-zone / station) | [zoobab/mobib-extractor](https://github.com/zoobab/mobib-extractor) (2009), complétée | codes ajoutés d'après des cartes réelles 2026 ; lignes actuelles |
 | Codes postaux → communes | bpost / NGI-IGN, [Open Data Wallonie-Bruxelles](https://www.odwb.be/explore/dataset/postal-codes-belgium/), 05/09/2025 | 1187 codes ; noms FR, sinon NL / DE |
 | Structure des champs (titulaire, trajets, abonnements) | [metrodroid](https://github.com/metrodroid/metrodroid) | vérifiée sur des cartes réelles 2024-2026 |
 
@@ -168,7 +176,8 @@ Points vérifiés sur des cartes réelles :
 
 - La carte ne conserve que les **3 ou 4 dernières validations**, pas l'historique complet.
 - Seules les **validations** sont enregistrées : impossible de savoir où le voyageur est descendu.
-- La table des **stations de métro** date de 2009 et utilise une numérotation propre à la carte, absente du GTFS : certaines stations s'affichent sous forme de numéro.
+- La table des **stations de métro** utilise une numérotation propre à la carte, absente du GTFS : une station inconnue s'affiche sous forme de numéro.
+- Les **voyages restants** ne sont vérifiés que sur un ticket Jump 1 voyage (0 restant) ; les autres titres à voyages suivent la logique de metrodroid.
 - La **date de fin d'abonnement** est calculée (date d'achat + durée) et non lue sur la carte.
 - Seuls 4 noms de tarifs sont connus ; les autres s'affichent `Tarif 0x…`.
 - Pas d'accents à l'écran : les polices intégrées du Flipper sont limitées à l'ASCII.
@@ -177,7 +186,16 @@ Points vérifiés sur des cartes réelles :
 
 ## 📦 Installation
 
-Firmware cible : **Momentum** (testé sur `mntm-012`, API 87.1).
+**Le plus simple : télécharger le `.fap`** depuis la [dernière release](https://github.com/Th3rdMan/Mobipper/releases/latest), puis le copier dans `/ext/apps/NFC/` (qFlipper ou carte SD) :
+
+| Fichier | Firmware |
+|---------|----------|
+| `mobipper-momentum.fap` | Momentum `mntm-012` (testé sur un vrai Flipper) |
+| `mobipper-officiel.fap` | firmware officiel, dernière version stable |
+
+Chaque release est compilée automatiquement par GitHub Actions ; le détail des versions est dans le [journal des versions](CHANGELOG.md).
+
+> Mise à jour depuis la v0.1 : supprimer l'ancien `/ext/apps/NFC/mobib.fap`. Les sauvegardes sont déplacées automatiquement vers `/ext/apps_data/mobipper/dumps/` au premier lancement.
 
 **Compilation avec [`ufbt`](https://github.com/flipperdevices/flipperzero-ufbt) :**
 ```bash
@@ -185,11 +203,11 @@ git clone https://github.com/Th3rdMan/mobipper.git
 cd mobipper
 pip install ufbt
 ufbt update --hw-target=f7 --url=https://up.momentum-fw.dev/builds/firmware/mntm-012/flipper-z-f7-sdk-mntm-012.zip
-ufbt              # compile dist/mobib.fap
+ufbt              # compile dist/mobipper.fap
 ufbt launch       # compile, envoie sur le Flipper connecté et lance l'application
 ```
 
-Le fichier `dist/mobib.fap` peut aussi être copié manuellement dans `/ext/apps/NFC/` sur la carte SD.
+Le fichier `dist/mobipper.fap` peut aussi être copié manuellement dans `/ext/apps/NFC/` sur la carte SD.
 
 **Mise à jour de la table des arrêts :**
 ```bash
@@ -211,7 +229,7 @@ python tools/postal_codes.py postal_codes.csv files/postal_codes.txt --report
 
 2. Choisir **Lire une carte** et poser la carte MOBIB à plat contre le dos du Flipper.
 
-3. Le **Résumé** s'affiche automatiquement ; la lecture est sauvegardée sous `NOM Prenom`.
+3. Le **Résumé** s'affiche automatiquement ; la lecture est sauvegardée sous `NOM Prenom` (ou met à jour la sauvegarde existante de la carte).
 
 4. **Retour** ouvre le menu de la carte : Résumé, Titulaire, Abonnements, Trajets, Enregistrements, FCI, Analyse avancée.
 
