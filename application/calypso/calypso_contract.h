@@ -43,27 +43,27 @@
 /* Tariff codes recognised by metrodroid's MobibLookup. The value is the
  * raw 14-bit field; we expose it so the UI can pretty-print known ones
  * and fall back to hex for everything else. */
-#define CALYPSO_TARIFF_JUMP_1_TRIP            0x2801u
-#define CALYPSO_TARIFF_JUMP_10_TRIPS          0x2803u
-#define CALYPSO_TARIFF_AIRPORT_BUS            0x0805u
-#define CALYPSO_TARIFF_JUMP_24H_BUS_AIRPORT   0x303Du
+#define CALYPSO_TARIFF_JUMP_1_TRIP          0x2801u
+#define CALYPSO_TARIFF_JUMP_10_TRIPS        0x2803u
+#define CALYPSO_TARIFF_AIRPORT_BUS          0x0805u
+#define CALYPSO_TARIFF_JUMP_24H_BUS_AIRPORT 0x303Du
 
 typedef struct {
-    bool     valid;
+    bool valid;
     uint32_t flags;
 
-    uint8_t  version;
-    uint16_t tariff;            /**< 14-bit tariff code; 0 if absent. */
-    uint16_t price_amount;      /**< Price field; 0 if absent. */
+    uint8_t version;
+    uint16_t tariff; /**< 14-bit tariff code; 0 if absent. */
+    uint16_t price_amount; /**< Price field; 0 if absent. */
 
     /* Sale date (days since 1997-01-01) and Y/M/D breakout. */
     uint16_t sale_days;
     uint16_t sale_year;
-    uint8_t  sale_month;
-    uint8_t  sale_day;
+    uint8_t sale_month;
+    uint8_t sale_day;
 
-    uint8_t  duration_units;    /**< 0=days, 1=weeks, 2=months (per metrodroid). */
-    uint8_t  duration;          /**< Duration in `duration_units`. */
+    uint8_t duration_units; /**< 0=days, 1=weeks, 2=months (per metrodroid). */
+    uint8_t duration; /**< Duration in `duration_units`. */
 } CalypsoContract;
 
 /** Returns a static human label or NULL for unknown tariffs. */

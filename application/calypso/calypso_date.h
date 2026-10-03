@@ -16,14 +16,7 @@
 
 /** Convert "days since 1997-01-01" into Gregorian Y/M/D. Returns false
  *  on absurd inputs (year > 2100). */
-bool calypso_date_from_days(
-    uint16_t days,
-    uint16_t* year,
-    uint8_t*  month,
-    uint8_t*  day);
+bool calypso_date_from_days(uint16_t days, uint16_t* year, uint8_t* month, uint8_t* day);
 
 /** Convert "minutes since midnight" into hour/minute. Clamps to 23:59. */
-void calypso_time_from_minutes(
-    uint16_t minutes,
-    uint8_t* hour,
-    uint8_t* minute);
+void calypso_time_from_minutes(uint16_t minutes, uint8_t* hour, uint8_t* minute);

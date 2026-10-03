@@ -23,7 +23,7 @@ static void mobib_scan_nfc_cb(MobibNfcEvent event, const MobibDump* dump, void* 
     MobibApp* app = ctx;
 
     if(event == MobibNfcEventDumped && dump) {
-        app->dump       = *dump;
+        app->dump = *dump;
         app->dump_valid = true;
         view_dispatcher_send_custom_event(app->view_dispatcher, ScanCustomEventDumped);
     } else {
@@ -37,7 +37,12 @@ static void mobib_scan_render_waiting(MobibApp* app) {
     widget_add_text_box_element(
         w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#Lecture...\e#", false);
     widget_add_string_multiline_element(
-        w, 64, 36, AlignCenter, AlignCenter, FontSecondary,
+        w,
+        64,
+        36,
+        AlignCenter,
+        AlignCenter,
+        FontSecondary,
         "Pose la carte MOBIB\na plat contre le\ndos du Flipper");
 }
 
@@ -72,8 +77,7 @@ bool mobib_scene_scan_on_event(void* context, SceneManagerEvent event) {
 
         /* Open the card menu with the overview already displayed on top:
          * back from the overview lands on the section menu. */
-        scene_manager_set_scene_state(
-            app->scene_manager, MobibSceneCard, MobibSectionOverview);
+        scene_manager_set_scene_state(app->scene_manager, MobibSceneCard, MobibSectionOverview);
         scene_manager_next_scene(app->scene_manager, MobibSceneCard);
         scene_manager_next_scene(app->scene_manager, MobibSceneCardSection);
         return true;

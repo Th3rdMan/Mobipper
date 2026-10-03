@@ -30,7 +30,8 @@ static bool tlv_read_length(const uint8_t** p, const uint8_t* end, size_t* len) 
     if(n == 0 || n > 2) return false; /* indefinite or > 65535: refuse */
     if(*p + n > end) return false;
     size_t v = 0;
-    for(uint8_t i = 0; i < n; ++i) v = (v << 8) | *(*p)++;
+    for(uint8_t i = 0; i < n; ++i)
+        v = (v << 8) | *(*p)++;
     *len = v;
     return true;
 }
@@ -39,19 +40,20 @@ bool calypso_tlv_next(const uint8_t** cursor, const uint8_t* end, CalypsoTlv* ou
     if(!cursor || !*cursor || !end || *cursor > end) return false;
 
     /* Skip any 00 / FF padding bytes between TLVs (allowed by ISO 7816-4). */
-    while(*cursor < end && (**cursor == 0x00 || **cursor == 0xFF)) (*cursor)++;
+    while(*cursor < end && (**cursor == 0x00 || **cursor == 0xFF))
+        (*cursor)++;
     if(*cursor >= end) return false;
 
     const uint8_t* p = *cursor;
     uint32_t tag = 0;
-    size_t   len = 0;
+    size_t len = 0;
     if(!tlv_read_tag(&p, end, &tag)) return false;
     if(!tlv_read_length(&p, end, &len)) return false;
     if(p + len > end) return false;
 
-    out->tag    = tag;
+    out->tag = tag;
     out->length = len;
-    out->value  = p;
+    out->value = p;
 
     *cursor = p + len;
     return true;
@@ -63,11 +65,7 @@ static bool tlv_is_constructed(uint32_t tag) {
     return (first & 0x20) != 0;
 }
 
-bool calypso_tlv_find(
-    const uint8_t* buf,
-    size_t         len,
-    uint32_t       tag,
-    CalypsoTlv*    out) {
+bool calypso_tlv_find(const uint8_t* buf, size_t len, uint32_t tag, CalypsoTlv* out) {
     if(!buf || !out) return false;
     const uint8_t* cur = buf;
     const uint8_t* end = buf + len;

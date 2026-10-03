@@ -23,20 +23,20 @@
 #define CALYPSO_HOLDER_NAME_MAX 64
 
 typedef struct {
-    bool     valid;
+    bool valid;
 
     /* 0=anonymous, 1=male, 2=female. */
-    uint8_t  gender;
+    uint8_t gender;
 
     /* Birth date, BCD packed YYYYMMDD. */
-    uint8_t  birth_year_top2;
-    uint8_t  birth_year_bot2;
-    uint8_t  birth_month;
-    uint8_t  birth_day;
+    uint8_t birth_year_top2;
+    uint8_t birth_year_bot2;
+    uint8_t birth_month;
+    uint8_t birth_day;
 
     /* Trimmed, NUL-terminated holder name. */
-    char     name[CALYPSO_HOLDER_NAME_MAX];
-    size_t   name_len;
+    char name[CALYPSO_HOLDER_NAME_MAX];
+    size_t name_len;
 } CalypsoHolder;
 
 /** Returns "Homme", "Femme", or NULL. */

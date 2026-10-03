@@ -9,10 +9,10 @@
  *   3. List the new source in `application.fam`.
  */
 
-ADD_SCENE(mobib, start,        Start)
-ADD_SCENE(mobib, scan,         Scan)
-ADD_SCENE(mobib, dumps,        Dumps)
-ADD_SCENE(mobib, card,         Card)
+ADD_SCENE(mobib, start, Start)
+ADD_SCENE(mobib, scan, Scan)
+ADD_SCENE(mobib, dumps, Dumps)
+ADD_SCENE(mobib, card, Card)
 ADD_SCENE(mobib, card_section, CardSection)
-ADD_SCENE(mobib, delete,       Delete)
-ADD_SCENE(mobib, about,        About)
+ADD_SCENE(mobib, delete, Delete)
+ADD_SCENE(mobib, about, About)

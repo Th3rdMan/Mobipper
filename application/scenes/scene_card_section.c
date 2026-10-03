@@ -16,10 +16,7 @@ void mobib_scene_card_section_on_enter(void* context) {
     const MobibSection section = (MobibSection)state;
 
     text_box_reset(app->text_box);
-    mobib_format_section(
-        section,
-        app->dump_valid ? &app->dump : NULL,
-        app->text_buffer);
+    mobib_format_section(section, app->dump_valid ? &app->dump : NULL, app->text_buffer);
     text_box_set_text(app->text_box, furi_string_get_cstr(app->text_buffer));
     text_box_set_font(app->text_box, TextBoxFontText);
 

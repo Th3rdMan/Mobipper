@@ -19,7 +19,8 @@ static uint32_t bitmap_read(CalypsoBits* b, size_t n) {
 }
 
 static bool buffer_is_all_zero(const uint8_t* buf, size_t len) {
-    for(size_t i = 0; i < len; ++i) if(buf[i] != 0) return false;
+    for(size_t i = 0; i < len; ++i)
+        if(buf[i] != 0) return false;
     return true;
 }
 
@@ -29,9 +30,12 @@ const char* calypso_event_provider_name(uint8_t provider) {
      * report bus events also reading as code 0 on modern v3 cards, so we
      * stop pretending and show "Mode N" for unverified codes. */
     switch(provider) {
-    case CALYPSO_PROVIDER_BUS:      return "Bus";
-    case CALYPSO_PROVIDER_TRAM:     return "Tram";
-    default:                        return NULL;
+    case CALYPSO_PROVIDER_BUS:
+        return "Bus";
+    case CALYPSO_PROVIDER_TRAM:
+        return "Tram";
+    default:
+        return NULL;
     }
 }
 
@@ -49,8 +53,8 @@ bool calypso_event_parse(const uint8_t* rec, size_t rec_len, CalypsoEvent* out) 
      * so the caller can still display the raw bytes if it wants. */
     if(out->version < 3) return false;
 
-    out->event_date_days     = (uint16_t)calypso_bits_read(&b, 14);
-    out->event_time_minutes  = (uint16_t)calypso_bits_read(&b, 11);
+    out->event_date_days = (uint16_t)calypso_bits_read(&b, 14);
+    out->event_time_minutes = (uint16_t)calypso_bits_read(&b, 11);
     calypso_bits_skip(&b, 31); /* EVENT_UNKNOWN_B1 */
 
     /* ---------------------------- bitmap 1 ---------------------------- */
@@ -71,7 +75,7 @@ bool calypso_event_parse(const uint8_t* rec, size_t rec_len, CalypsoEvent* out) 
     if(bm1 & 0x08) calypso_bits_skip(&b, 16); /* NeverSeen3 */
     if(bm1 & 0x10) {
         out->service_provider = (uint8_t)calypso_bits_read(&b, 5);
-        out->location_id      = calypso_bits_read(&b, 17);
+        out->location_id = calypso_bits_read(&b, 17);
         calypso_bits_skip(&b, 10); /* unknown E1 */
         out->flags |= CALYPSO_EVENT_HAS_PROVIDER;
     }
@@ -90,14 +94,11 @@ bool calypso_event_parse(const uint8_t* rec, size_t rec_len, CalypsoEvent* out) 
     }
     if(bm2 & 0x08) calypso_bits_skip(&b, 16);
     if(bm2 & 0x10) {
-        const uint16_t fs_days    = (uint16_t)calypso_bits_read(&b, 14);
+        const uint16_t fs_days = (uint16_t)calypso_bits_read(&b, 14);
         const uint16_t fs_minutes = (uint16_t)calypso_bits_read(&b, 11);
         if(fs_days != 0) {
             calypso_date_from_days(
-                fs_days,
-                &out->first_stamp_year,
-                &out->first_stamp_month,
-                &out->first_stamp_day);
+                fs_days, &out->first_stamp_year, &out->first_stamp_month, &out->first_stamp_day);
             calypso_time_from_minutes(
                 fs_minutes, &out->first_stamp_hour, &out->first_stamp_minute);
             out->flags |= CALYPSO_EVENT_HAS_FIRST_STAMP;
@@ -110,13 +111,9 @@ bool calypso_event_parse(const uint8_t* rec, size_t rec_len, CalypsoEvent* out) 
     /* Convert the always-present timestamp. */
     if(out->event_date_days != 0) {
         calypso_date_from_days(
-            out->event_date_days,
-            &out->event_year,
-            &out->event_month,
-            &out->event_day);
+            out->event_date_days, &out->event_year, &out->event_month, &out->event_day);
     }
-    calypso_time_from_minutes(
-        out->event_time_minutes, &out->event_hour, &out->event_minute);
+    calypso_time_from_minutes(out->event_time_minutes, &out->event_hour, &out->event_minute);
 
     out->valid = true;
     return true;

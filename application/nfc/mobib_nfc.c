@@ -20,10 +20,8 @@
  * is cheap and gives us the union of every variant out there. The
  * Belgian MOBIB family is documented to use a subset of these. */
 static const uint8_t MOBIB_SFI_PROBE[] = {
-    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
-    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-    0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
 };
 
 /* Records to try per SFI. Calypso EFs are typically 1..N records; we cap
@@ -32,11 +30,11 @@ static const uint8_t MOBIB_SFI_PROBE[] = {
 #define MOBIB_RECORDS_PER_SFI 16
 
 struct MobibNfc {
-    Nfc*             nfc;
-    NfcPoller*       poller;
+    Nfc* nfc;
+    NfcPoller* poller;
     MobibNfcCallback callback;
-    void*            context;
-    bool             running;
+    void* context;
+    bool running;
 };
 
 /* ------------------------------------------------------------ helpers */
@@ -59,8 +57,8 @@ static void mobib_nfc_fill_card_info(const Iso14443_3bData* data, MobibCardInfo*
     }
 
     out->supports_iso14443_4 = iso14443_3b_supports_iso14443_4(data);
-    out->frame_size_max      = iso14443_3b_get_frame_size_max(data);
-    out->fwt_fc_max          = iso14443_3b_get_fwt_fc_max(data);
+    out->frame_size_max = iso14443_3b_get_frame_size_max(data);
+    out->fwt_fc_max = iso14443_3b_get_fwt_fc_max(data);
 }
 
 static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dump) {
@@ -79,18 +77,17 @@ static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dum
                 if(dump->record_count >= MOBIB_DUMP_RECORD_MAX) break;
 
                 MobibRecord* slot = &dump->records[dump->record_count];
-                size_t       len  = 0;
-                if(!calypso_read_record(
-                       ctx, sfi, rec, slot->data, sizeof(slot->data), &len)) {
+                size_t len = 0;
+                if(!calypso_read_record(ctx, sfi, rec, slot->data, sizeof(slot->data), &len)) {
                     /* SW != 9000: file/record absent. Move to next SFI on
                      * the very first record; otherwise the EF exists but
                      * we've walked past its last record. */
                     if(rec == 1) break;
                     break;
                 }
-                slot->sfi    = sfi;
+                slot->sfi = sfi;
                 slot->record = rec;
-                slot->len    = (uint8_t)len;
+                slot->len = (uint8_t)len;
                 dump->record_count++;
             }
             if(dump->record_count >= MOBIB_DUMP_RECORD_MAX) break;
@@ -103,8 +100,7 @@ static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dum
             for(uint8_t rec = 1; rec <= MOBIB_HOLDER_EXT_RECS; ++rec) {
                 size_t len = 0;
                 uint8_t* buf = dump->holder_ext[rec - 1];
-                if(calypso_read_record_current(
-                       ctx, rec, buf, MOBIB_HOLDER_EXT_REC_SZ, &len)) {
+                if(calypso_read_record_current(ctx, rec, buf, MOBIB_HOLDER_EXT_REC_SZ, &len)) {
                     dump->holder_ext_len[rec - 1] = (uint8_t)len;
                     dump->holder_ext_present = true;
                 }
@@ -118,16 +114,16 @@ static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dum
          * skipped — we never learn those keys. */
         static const struct {
             const char* label;
-            uint16_t    file_id;
+            uint16_t file_id;
         } kExtras[] = {
-            {"ICC",              0x0002},
-            {"ID",               0x0003},
-            {"AIDfile",          0x3F04},
-            {"DISPLAY",          0x2F10},
+            {"ICC", 0x0002},
+            {"ID", 0x0003},
+            {"AIDfile", 0x3F04},
+            {"DISPLAY", 0x2F10},
             {"TICKETING_HOLDER", 0x2002},
-            {"TICKETING_AID",    0x2004},
-            {"EP_AID",           0x1004},
-            {"ETICKET_AID",      0x8004},
+            {"TICKETING_AID", 0x2004},
+            {"EP_AID", 0x1004},
+            {"ETICKET_AID", 0x8004},
         };
 
         for(size_t k = 0; k < sizeof(kExtras) / sizeof(kExtras[0]); ++k) {
@@ -136,21 +132,21 @@ static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dum
 
             MobibExtraFile* e = &dump->extras[dump->extra_count];
             size_t len = 0;
-            if(!calypso_read_record_current(
-                   ctx, 1, e->data, sizeof(e->data), &len)) continue;
+            if(!calypso_read_record_current(ctx, 1, e->data, sizeof(e->data), &len)) continue;
 
             e->file_id = kExtras[k].file_id;
-            e->len     = (uint8_t)len;
+            e->len = (uint8_t)len;
             const size_t lbl = strlen(kExtras[k].label);
-            memcpy(e->label, kExtras[k].label,
-                   lbl < sizeof(e->label) ? lbl + 1 : sizeof(e->label) - 1);
+            memcpy(
+                e->label,
+                kExtras[k].label,
+                lbl < sizeof(e->label) ? lbl + 1 : sizeof(e->label) - 1);
             dump->extra_count++;
         }
 
         /* Now re-SELECT our main AID so any subsequent reads still work
          * the way the SFI walk assumes. Ignore the outcome — we're done. */
-        calypso_select_aid(
-            ctx, CALYPSO_AID, CALYPSO_AID_LEN, NULL, 0, NULL);
+        calypso_select_aid(ctx, CALYPSO_AID, CALYPSO_AID_LEN, NULL, 0, NULL);
     }
 
     /* Secondary Calypso applications. Each SELECT is an independent
@@ -158,17 +154,17 @@ static void mobib_nfc_run_calypso_dump(Iso14443_4bPoller* poller, MobibDump* dum
      * keys, but proving the app exists is already useful. */
     {
         /* "3MTR.ICA" — Calypso Parking (MPP). */
-        static const uint8_t kMpp[8] = {0x33,0x4D,0x54,0x52,0x2E,0x49,0x43,0x41};
+        static const uint8_t kMpp[8] = {0x33, 0x4D, 0x54, 0x52, 0x2E, 0x49, 0x43, 0x41};
         if(calypso_select_aid(ctx, kMpp, sizeof(kMpp), NULL, 0, NULL)) {
             dump->has_mpp = true;
         }
         /* "3TCW.ICA" — Calypso Transport v2 (RT2). */
-        static const uint8_t kRt2[8] = {0x33,0x54,0x43,0x57,0x2E,0x49,0x43,0x41};
+        static const uint8_t kRt2[8] = {0x33, 0x54, 0x43, 0x57, 0x2E, 0x49, 0x43, 0x41};
         if(calypso_select_aid(ctx, kRt2, sizeof(kRt2), NULL, 0, NULL)) {
             dump->has_rt2 = true;
         }
         /* "2TIC.ICA" — alternate ticketing sometimes referred to as ETicket. */
-        static const uint8_t kEt[8] = {0x32,0x54,0x49,0x43,0x2E,0x49,0x43,0x41};
+        static const uint8_t kEt[8] = {0x32, 0x54, 0x49, 0x43, 0x2E, 0x49, 0x43, 0x41};
         if(calypso_select_aid(ctx, kEt, sizeof(kEt), NULL, 0, NULL)) {
             dump->has_eticket = true;
         }
@@ -191,9 +187,9 @@ static NfcCommand mobib_nfc_poller_cb(NfcGenericEvent event, void* context) {
     const Iso14443_4bPollerEvent* evt = event.event_data;
 
     if(evt->type == Iso14443_4bPollerEventTypeReady) {
-        Iso14443_4bPoller*     poller_4b = event.instance;
-        const Iso14443_4bData* data_4b   = nfc_poller_get_data(self->poller);
-        const Iso14443_3bData* data_3b   = iso14443_4b_get_base_data(data_4b);
+        Iso14443_4bPoller* poller_4b = event.instance;
+        const Iso14443_4bData* data_4b = nfc_poller_get_data(self->poller);
+        const Iso14443_3bData* data_3b = iso14443_4b_get_base_data(data_4b);
 
         memset(&s_dump, 0, sizeof(s_dump));
         mobib_nfc_fill_card_info(data_3b, &s_dump.card);
@@ -229,7 +225,7 @@ void mobib_nfc_start(MobibNfc* self, MobibNfcCallback callback, void* context) {
     if(self->running) return;
 
     self->callback = callback;
-    self->context  = context;
+    self->context = context;
 
     self->poller = nfc_poller_alloc(self->nfc, NfcProtocolIso14443_4b);
     nfc_poller_start(self->poller, mobib_nfc_poller_cb, self);
@@ -240,6 +236,6 @@ void mobib_nfc_stop(MobibNfc* self) {
     if(!self || !self->running) return;
     nfc_poller_stop(self->poller);
     nfc_poller_free(self->poller);
-    self->poller  = NULL;
+    self->poller = NULL;
     self->running = false;
 }

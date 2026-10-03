@@ -26,14 +26,22 @@
 
 const char* mobib_section_title(MobibSection s) {
     switch(s) {
-    case MobibSectionOverview:  return "Resume";
-    case MobibSectionHolder:    return "Titulaire";
-    case MobibSectionContracts: return "Abonnements";
-    case MobibSectionJourneys:  return "Trajets";
-    case MobibSectionRecords:   return "Enregistrements";
-    case MobibSectionFci:       return "FCI";
-    case MobibSectionDeep:      return "Analyse avancee";
-    default:                    return "?";
+    case MobibSectionOverview:
+        return "Resume";
+    case MobibSectionHolder:
+        return "Titulaire";
+    case MobibSectionContracts:
+        return "Abonnements";
+    case MobibSectionJourneys:
+        return "Trajets";
+    case MobibSectionRecords:
+        return "Enregistrements";
+    case MobibSectionFci:
+        return "FCI";
+    case MobibSectionDeep:
+        return "Analyse avancee";
+    default:
+        return "?";
     }
 }
 
@@ -130,8 +138,7 @@ static bool contract_trips_left(
         off = 0;
         if(!r || r->len < 3) return false;
     }
-    *trips = ((uint32_t)r->data[off] << 16) | ((uint32_t)r->data[off + 1] << 8) |
-             r->data[off + 2];
+    *trips = ((uint32_t)r->data[off] << 16) | ((uint32_t)r->data[off + 1] << 8) | r->data[off + 2];
     return true;
 }
 
@@ -226,9 +233,8 @@ static void format_overview(const MobibDump* d, FuriString* s) {
         holder_block = true;
     }
     furi_string_free(tmp);
-    if(have_holder &&
-       (holder.birth_year_top2 || holder.birth_year_bot2 || holder.birth_month ||
-        holder.birth_day)) {
+    if(have_holder && (holder.birth_year_top2 || holder.birth_year_bot2 || holder.birth_month ||
+                       holder.birth_day)) {
         /* BCD packed YYYYMMDD: %02X prints the decimal digits. */
         furi_string_cat_printf(
             s,
@@ -255,8 +261,11 @@ static void format_overview(const MobibDump* d, FuriString* s) {
     furi_string_cat_str(s, "\n");
     if(have_env && env.validity_end_year) {
         furi_string_cat_printf(
-            s, "Valable jusqu'au %02u/%02u/%04u\n",
-            env.validity_end_day, env.validity_end_month, env.validity_end_year);
+            s,
+            "Valable jusqu'au %02u/%02u/%04u\n",
+            env.validity_end_day,
+            env.validity_end_month,
+            env.validity_end_year);
     }
     furi_string_cat_str(s, "\n");
 
@@ -321,8 +330,12 @@ static void format_overview(const MobibDump* d, FuriString* s) {
         if(place) furi_string_cat_printf(s, "  %s\n", place);
         if(last.event_year) {
             furi_string_cat_printf(
-                s, "%02u/%02u %02u:%02u",
-                last.event_day, last.event_month, last.event_hour, last.event_minute);
+                s,
+                "%02u/%02u %02u:%02u",
+                last.event_day,
+                last.event_month,
+                last.event_hour,
+                last.event_minute);
         }
         FuriString* mode = furi_string_alloc();
         if(append_journey_mode(mode, &last, &j)) {
@@ -347,7 +360,7 @@ static void format_holder(const MobibDump* d, FuriString* s) {
         CalypsoHolder h;
         if(mobib_dump_holder(d, &h)) {
             const char* gender = calypso_holder_gender_name(h.gender);
-            const char* title  = calypso_holder_gender_title(h.gender);
+            const char* title = calypso_holder_gender_title(h.gender);
 
             if(h.gender == 0 && h.name_len == 0) {
                 furi_string_cat_str(s, "Carte anonyme.\n");
@@ -356,8 +369,7 @@ static void format_holder(const MobibDump* d, FuriString* s) {
                 FuriString* name = furi_string_alloc();
                 if(mobib_holder_display_name(&h, name)) {
                     if(title) {
-                        furi_string_cat_printf(
-                            s, "%s %s\n", title, furi_string_get_cstr(name));
+                        furi_string_cat_printf(s, "%s %s\n", title, furi_string_get_cstr(name));
                     } else {
                         furi_string_cat_printf(s, "%s\n", furi_string_get_cstr(name));
                     }
@@ -366,15 +378,17 @@ static void format_holder(const MobibDump* d, FuriString* s) {
                 if(gender) {
                     furi_string_cat_printf(s, "Sexe  %s\n", gender);
                 }
-                if(h.birth_year_top2 || h.birth_year_bot2 ||
-                   h.birth_month   || h.birth_day) {
+                if(h.birth_year_top2 || h.birth_year_bot2 || h.birth_month || h.birth_day) {
                     /* Birth date is BCD packed YYYYMMDD; the hex digits of
                      * each byte ARE the decimal digits, so %02X reads as
                      * the human number. */
                     furi_string_cat_printf(
-                        s, "Ne(e) le  %02X/%02X/%02X%02X\n",
-                        h.birth_day, h.birth_month,
-                        h.birth_year_top2, h.birth_year_bot2);
+                        s,
+                        "Ne(e) le  %02X/%02X/%02X%02X\n",
+                        h.birth_day,
+                        h.birth_month,
+                        h.birth_year_top2,
+                        h.birth_year_bot2);
                 }
             }
             furi_string_cat_str(s, "\n");
@@ -424,8 +438,8 @@ static void format_contracts(const MobibDump* d, FuriString* s) {
         }
 
         if(c.flags & CALYPSO_CONTRACT_HAS_SALE && c.sale_year) {
-            furi_string_cat_printf(s, "  Achete le %02u/%02u/%04u\n",
-                c.sale_day, c.sale_month, c.sale_year);
+            furi_string_cat_printf(
+                s, "  Achete le %02u/%02u/%04u\n", c.sale_day, c.sale_month, c.sale_year);
         }
         if(c.flags & CALYPSO_CONTRACT_HAS_DURATION) {
             /* metrodroid documents 0/1/2. Units 3 means months on real
@@ -433,10 +447,16 @@ static void format_contracts(const MobibDump* d, FuriString* s) {
              * yearly pass 12 (see contract_end). */
             const char* unit = "?";
             switch(c.duration_units) {
-            case 0: unit = "jours";    break;
-            case 1: unit = "semaines"; break;
+            case 0:
+                unit = "jours";
+                break;
+            case 1:
+                unit = "semaines";
+                break;
             case 2:
-            case 3: unit = "mois";     break;
+            case 3:
+                unit = "mois";
+                break;
             }
             furi_string_cat_printf(s, "  Duree %u %s\n", c.duration, unit);
         }
@@ -444,8 +464,7 @@ static void format_contracts(const MobibDump* d, FuriString* s) {
             /* Calypso stores the price in cents (centimes) per metrodroid's
              * En1545LookupSTR.parseCurrency → TransitCurrency.EUR(price). */
             furi_string_cat_printf(
-                s, "  Prix %u,%02u EUR\n",
-                c.price_amount / 100, c.price_amount % 100);
+                s, "  Prix %u,%02u EUR\n", c.price_amount / 100, c.price_amount % 100);
         }
         uint32_t trips;
         if(contract_trips_left(d, &c, r->record, &trips)) {
@@ -496,9 +515,13 @@ static void format_journeys(const MobibDump* d, FuriString* s) {
         /* 1. Date - heure. */
         if(e->event_year) {
             furi_string_cat_printf(
-                s, "%02u/%02u/%04u - %02u:%02u\n",
-                e->event_day, e->event_month, e->event_year,
-                e->event_hour, e->event_minute);
+                s,
+                "%02u/%02u/%04u - %02u:%02u\n",
+                e->event_day,
+                e->event_month,
+                e->event_year,
+                e->event_hour,
+                e->event_minute);
         } else {
             furi_string_cat_str(s, "(date invalide)\n");
         }
@@ -535,8 +558,10 @@ static void format_journeys(const MobibDump* d, FuriString* s) {
              e->first_stamp_minute != e->event_minute);
         if(first_differs) {
             furi_string_cat_printf(
-                s, "Correspondance\n  depart a %02u:%02u\n",
-                e->first_stamp_hour, e->first_stamp_minute);
+                s,
+                "Correspondance\n  depart a %02u:%02u\n",
+                e->first_stamp_hour,
+                e->first_stamp_minute);
         } else if(e->flags & CALYPSO_EVENT_HAS_FIRST_STAMP) {
             furi_string_cat_str(s, "Debut de trajet\n");
         }
@@ -575,7 +600,11 @@ static void format_records(const MobibDump* d, FuriString* s) {
 
         /* Detect all-zero record and label it instead of dumping. */
         bool all_zero = true;
-        for(size_t b = 0; b < r->len; ++b) if(r->data[b]) { all_zero = false; break; }
+        for(size_t b = 0; b < r->len; ++b)
+            if(r->data[b]) {
+                all_zero = false;
+                break;
+            }
 
         if(all_zero) {
             furi_string_cat_str(s, "(vide)\n");
@@ -635,8 +664,10 @@ static void format_fci(const MobibDump* d, FuriString* s) {
     furi_string_cat_printf(s, "Brut (%zu octets)\n", d->fci_len);
     for(size_t i = 0; i < d->fci_len; ++i) {
         furi_string_cat_printf(s, "%02X", d->fci[i]);
-        if((i + 1) % 8 == 0) furi_string_cat_str(s, "\n");
-        else if(i + 1 < d->fci_len) furi_string_cat_str(s, " ");
+        if((i + 1) % 8 == 0)
+            furi_string_cat_str(s, "\n");
+        else if(i + 1 < d->fci_len)
+            furi_string_cat_str(s, " ");
     }
     if(d->fci_len % 8 != 0) furi_string_cat_str(s, "\n");
 }
@@ -647,14 +678,10 @@ static void format_deep(const MobibDump* d, FuriString* s) {
     append_divider(s, "ANALYSE AVANCEE");
 
     furi_string_cat_str(s, "Applis presentes :\n");
-    furi_string_cat_printf(
-        s, "  1TIC.ICA  %s\n", d->calypso_selected ? "oui" : "non");
-    furi_string_cat_printf(
-        s, "  3MTR.ICA  %s\n", d->has_mpp     ? "oui" : "-");
-    furi_string_cat_printf(
-        s, "  3TCW.ICA  %s\n", d->has_rt2     ? "oui" : "-");
-    furi_string_cat_printf(
-        s, "  2TIC.ICA  %s\n", d->has_eticket ? "oui" : "-");
+    furi_string_cat_printf(s, "  1TIC.ICA  %s\n", d->calypso_selected ? "oui" : "non");
+    furi_string_cat_printf(s, "  3MTR.ICA  %s\n", d->has_mpp ? "oui" : "-");
+    furi_string_cat_printf(s, "  3TCW.ICA  %s\n", d->has_rt2 ? "oui" : "-");
+    furi_string_cat_printf(s, "  2TIC.ICA  %s\n", d->has_eticket ? "oui" : "-");
 
     furi_string_cat_str(s, "\nFichiers en plus :\n");
     if(d->extra_count == 0) {
@@ -662,8 +689,7 @@ static void format_deep(const MobibDump* d, FuriString* s) {
     } else {
         for(size_t i = 0; i < d->extra_count; ++i) {
             const MobibExtraFile* e = &d->extras[i];
-            furi_string_cat_printf(
-                s, "  %s (0x%04X, %uB)\n", e->label, e->file_id, e->len);
+            furi_string_cat_printf(s, "  %s (0x%04X, %uB)\n", e->label, e->file_id, e->len);
             const size_t n = e->len < 12 ? e->len : 12;
             furi_string_cat_str(s, "    ");
             for(size_t b = 0; b < n; ++b) {
@@ -675,7 +701,8 @@ static void format_deep(const MobibDump* d, FuriString* s) {
         }
     }
 
-    furi_string_cat_str(s,
+    furi_string_cat_str(
+        s,
         "\nNote : ecrire dans un\n"
         "fichier Calypso exige\n"
         "les cles de l'emetteur,\n"
@@ -688,10 +715,7 @@ static void format_deep(const MobibDump* d, FuriString* s) {
 
 /* ------------------------------- public ----------------------------- */
 
-void mobib_format_section(
-    MobibSection      section,
-    const MobibDump*  dump,
-    FuriString*       out) {
+void mobib_format_section(MobibSection section, const MobibDump* dump, FuriString* out) {
     furi_string_reset(out);
     if(!dump) {
         furi_string_set_str(out, "Aucune carte chargee.\n");
@@ -699,13 +723,28 @@ void mobib_format_section(
     }
 
     switch(section) {
-    case MobibSectionOverview:  format_overview (dump, out); break;
-    case MobibSectionHolder:    format_holder   (dump, out); break;
-    case MobibSectionContracts: format_contracts(dump, out); break;
-    case MobibSectionJourneys:  format_journeys (dump, out); break;
-    case MobibSectionRecords:   format_records  (dump, out); break;
-    case MobibSectionFci:       format_fci      (dump, out); break;
-    case MobibSectionDeep:      format_deep     (dump, out); break;
-    default: break;
+    case MobibSectionOverview:
+        format_overview(dump, out);
+        break;
+    case MobibSectionHolder:
+        format_holder(dump, out);
+        break;
+    case MobibSectionContracts:
+        format_contracts(dump, out);
+        break;
+    case MobibSectionJourneys:
+        format_journeys(dump, out);
+        break;
+    case MobibSectionRecords:
+        format_records(dump, out);
+        break;
+    case MobibSectionFci:
+        format_fci(dump, out);
+        break;
+    case MobibSectionDeep:
+        format_deep(dump, out);
+        break;
+    default:
+        break;
     }
 }

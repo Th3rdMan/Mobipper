@@ -17,30 +17,30 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define CALYPSO_DF_NAME_MAX        16
-#define CALYPSO_APP_SERIAL_MAX     8
-#define CALYPSO_AID_EXTENSION_LEN  6
+#define CALYPSO_DF_NAME_MAX       16
+#define CALYPSO_APP_SERIAL_MAX    8
+#define CALYPSO_AID_EXTENSION_LEN 6
 
 typedef struct {
-    bool    valid;
+    bool valid;
 
     /* Full DF Name as returned in tag 84 (AID + extension). */
     uint8_t df_name[CALYPSO_DF_NAME_MAX];
-    size_t  df_name_len;
+    size_t df_name_len;
 
     /* True if the DF Name starts with the Calypso AID `1TIC.ICA`. */
-    bool    is_calypso_aid;
+    bool is_calypso_aid;
 
     /* The 6-byte tail that follows the AID. For the MOBIB family this
      * begins with `D0 56` (Calypso Networks Association marker). */
     uint8_t aid_extension[CALYPSO_AID_EXTENSION_LEN];
-    bool    has_aid_extension;
-    bool    is_mobib_extension; /**< extension begins with D0 56 */
+    bool has_aid_extension;
+    bool is_mobib_extension; /**< extension begins with D0 56 */
 
     /* Application Serial Number from tag C7. The last four bytes equal
      * the card's PUPI on every MOBIB observed so far. */
     uint8_t app_serial[CALYPSO_APP_SERIAL_MAX];
-    size_t  app_serial_len;
+    size_t app_serial_len;
 } CalypsoFci;
 
 /**

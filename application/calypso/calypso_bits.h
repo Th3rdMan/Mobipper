@@ -17,17 +17,17 @@
 #include <stdbool.h>
 
 typedef struct {
-    const uint8_t* data;       /**< Borrowed buffer.                       */
-    size_t         total_bits; /**< Total length of `data` in bits.        */
-    size_t         pos;        /**< Current bit offset (next bit to read). */
-    bool           ok;         /**< Cleared on any out-of-range read.      */
+    const uint8_t* data; /**< Borrowed buffer.                       */
+    size_t total_bits; /**< Total length of `data` in bits.        */
+    size_t pos; /**< Current bit offset (next bit to read). */
+    bool ok; /**< Cleared on any out-of-range read.      */
 } CalypsoBits;
 
 static inline void calypso_bits_init(CalypsoBits* b, const uint8_t* data, size_t bytes) {
-    b->data       = data;
+    b->data = data;
     b->total_bits = bytes * 8;
-    b->pos        = 0;
-    b->ok         = true;
+    b->pos = 0;
+    b->ok = true;
 }
 
 static inline uint32_t calypso_bits_read(CalypsoBits* b, size_t n) {
@@ -40,7 +40,7 @@ static inline uint32_t calypso_bits_read(CalypsoBits* b, size_t n) {
     for(size_t i = 0; i < n; ++i) {
         const size_t bit_index = b->pos + i;
         const uint8_t byte = b->data[bit_index >> 3];
-        const uint8_t bit  = (byte >> (7 - (bit_index & 7))) & 0x1;
+        const uint8_t bit = (byte >> (7 - (bit_index & 7))) & 0x1;
         v = (v << 1) | bit;
     }
     b->pos += n;

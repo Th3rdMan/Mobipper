@@ -42,12 +42,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define CALYPSO_EVENT_HAS_LOCATION_BUS  (1u << 0)
-#define CALYPSO_EVENT_HAS_ROUTE         (1u << 1)
-#define CALYPSO_EVENT_HAS_PROVIDER      (1u << 2)
-#define CALYPSO_EVENT_HAS_SERIAL        (1u << 3)
-#define CALYPSO_EVENT_HAS_FIRST_STAMP   (1u << 4)
-#define CALYPSO_EVENT_HAS_TRANSFER      (1u << 5)
+#define CALYPSO_EVENT_HAS_LOCATION_BUS (1u << 0)
+#define CALYPSO_EVENT_HAS_ROUTE        (1u << 1)
+#define CALYPSO_EVENT_HAS_PROVIDER     (1u << 2)
+#define CALYPSO_EVENT_HAS_SERIAL       (1u << 3)
+#define CALYPSO_EVENT_HAS_FIRST_STAMP  (1u << 4)
+#define CALYPSO_EVENT_HAS_TRANSFER     (1u << 5)
 
 /* Service provider codes used by MOBIB. Cross-referenced between
  * metrodroid (MobibLookup.kt: BUS=0x0F, TRAM=0x16) and zoobab's
@@ -59,33 +59,33 @@
 #define CALYPSO_PROVIDER_TRAM     0x16u
 
 typedef struct {
-    bool     valid;
+    bool valid;
     uint32_t flags;
 
-    uint8_t  version;
+    uint8_t version;
 
     /* Event timestamp — always present on v3 records. */
     uint16_t event_date_days;
     uint16_t event_year;
-    uint8_t  event_month;
-    uint8_t  event_day;
+    uint8_t event_month;
+    uint8_t event_day;
     uint16_t event_time_minutes;
-    uint8_t  event_hour;
-    uint8_t  event_minute;
+    uint8_t event_hour;
+    uint8_t event_minute;
 
     /* Optional fields, validity depends on `flags`. */
     uint16_t location_id_bus;
     uint16_t route_number;
-    uint8_t  service_provider;
+    uint8_t service_provider;
     uint32_t location_id;
     uint32_t serial_number;
-    uint8_t  transfer_number;
+    uint8_t transfer_number;
 
     uint16_t first_stamp_year;
-    uint8_t  first_stamp_month;
-    uint8_t  first_stamp_day;
-    uint8_t  first_stamp_hour;
-    uint8_t  first_stamp_minute;
+    uint8_t first_stamp_month;
+    uint8_t first_stamp_day;
+    uint8_t first_stamp_hour;
+    uint8_t first_stamp_minute;
 } CalypsoEvent;
 
 /** Returns "Bus", "Tram" or NULL for unknown providers. */

@@ -103,10 +103,8 @@ static const CalypsoMetroStation kMetro[] = {
 
 static const size_t kMetroCount = sizeof(kMetro) / sizeof(kMetro[0]);
 
-const CalypsoMetroStation* calypso_metro_station_lookup(
-    uint8_t zone,
-    uint8_t subzone,
-    uint8_t station) {
+const CalypsoMetroStation*
+    calypso_metro_station_lookup(uint8_t zone, uint8_t subzone, uint8_t station) {
     for(size_t i = 0; i < kMetroCount; ++i) {
         const CalypsoMetroStation* s = &kMetro[i];
         if(s->zone == zone && s->subzone == subzone && s->station == station) {
@@ -118,8 +116,8 @@ const CalypsoMetroStation* calypso_metro_station_lookup(
 
 const CalypsoMetroStation* calypso_metro_station_lookup_id(uint32_t location_id) {
     /* LOCATION_ID = zone[6] | subzone[4] | station[7] (17 bits, MSB-first). */
-    const uint8_t zone    = (uint8_t)((location_id >> 11) & 0x3F);
-    const uint8_t subzone = (uint8_t)((location_id >> 7)  & 0x0F);
-    const uint8_t station = (uint8_t)( location_id        & 0x7F);
+    const uint8_t zone = (uint8_t)((location_id >> 11) & 0x3F);
+    const uint8_t subzone = (uint8_t)((location_id >> 7) & 0x0F);
+    const uint8_t station = (uint8_t)(location_id & 0x7F);
     return calypso_metro_station_lookup(zone, subzone, station);
 }

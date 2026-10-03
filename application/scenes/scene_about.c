@@ -6,13 +6,16 @@
 
 void mobib_scene_about_on_enter(void* context) {
     MobibApp* app = context;
-    Widget*   w   = app->widget;
+    Widget* w = app->widget;
 
     widget_reset(w);
-    widget_add_text_box_element(
-        w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#Mobipper\e#", false);
+    widget_add_text_box_element(w, 0, 0, 128, 14, AlignCenter, AlignTop, "\e#Mobipper\e#", false);
     widget_add_text_scroll_element(
-        w, 0, 16, 128, 48,
+        w,
+        0,
+        16,
+        128,
+        48,
         "Lecteur NFC de cartes\n"
         "de transport belges\n"
         "MOBIB (Calypso /\n"

@@ -17,13 +17,13 @@ static void mobib_scene_start_submenu_cb(void* context, uint32_t index) {
 
 void mobib_scene_start_on_enter(void* context) {
     MobibApp* app = context;
-    Submenu*  m   = app->submenu;
+    Submenu* m = app->submenu;
 
     submenu_reset(m);
     submenu_set_header(m, "Mobipper");
-    submenu_add_item(m, "Lire une carte", StartSubmenuRead,   mobib_scene_start_submenu_cb, app);
-    submenu_add_item(m, "Sauvegardes",    StartSubmenuBrowse, mobib_scene_start_submenu_cb, app);
-    submenu_add_item(m, "A propos",       StartSubmenuAbout,  mobib_scene_start_submenu_cb, app);
+    submenu_add_item(m, "Lire une carte", StartSubmenuRead, mobib_scene_start_submenu_cb, app);
+    submenu_add_item(m, "Sauvegardes", StartSubmenuBrowse, mobib_scene_start_submenu_cb, app);
+    submenu_add_item(m, "A propos", StartSubmenuAbout, mobib_scene_start_submenu_cb, app);
 
     submenu_set_selected_item(
         m, scene_manager_get_scene_state(app->scene_manager, MobibSceneStart));

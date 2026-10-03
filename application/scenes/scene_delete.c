@@ -42,8 +42,7 @@ bool mobib_scene_delete_on_event(void* context, SceneManagerEvent event) {
 
     if(event.event == DialogExResultRight) {
         Storage* storage = furi_record_open(RECORD_STORAGE);
-        const bool removed =
-            storage_simply_remove(storage, furi_string_get_cstr(app->dump_path));
+        const bool removed = storage_simply_remove(storage, furi_string_get_cstr(app->dump_path));
         furi_record_close(RECORD_STORAGE);
 
         if(removed) {

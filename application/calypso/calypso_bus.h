@@ -15,9 +15,9 @@
 #include <stdbool.h>
 
 typedef struct {
-    uint16_t    line;   /**< STIB line number (decimal). */
-    uint16_t    code;   /**< Stop code = LOCATION_ID_BUS field. */
-    const char* name;   /**< Stop name (UTF-8, ≤24 chars + NUL). */
+    uint16_t line; /**< STIB line number (decimal). */
+    uint16_t code; /**< Stop code = LOCATION_ID_BUS field. */
+    const char* name; /**< Stop name (UTF-8, ≤24 chars + NUL). */
 } CalypsoBusStop;
 
 /** Returns NULL if no match. */

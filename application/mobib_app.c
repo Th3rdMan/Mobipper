@@ -34,8 +34,8 @@ static void (*const mobib_scene_on_exit[])(void*) = {
 const SceneManagerHandlers mobib_scene_handlers = {
     .on_enter_handlers = mobib_scene_on_enter,
     .on_event_handlers = mobib_scene_on_event,
-    .on_exit_handlers  = mobib_scene_on_exit,
-    .scene_num         = MobibSceneCount,
+    .on_exit_handlers = mobib_scene_on_exit,
+    .scene_num = MobibSceneCount,
 };
 
 /* ------------------------------------------------------- dispatcher glue */
@@ -57,11 +57,11 @@ static MobibApp* mobib_app_alloc(void) {
     if(!app) return NULL;
     memset(app, 0, sizeof(*app));
 
-    app->gui           = furi_record_open(RECORD_GUI);
+    app->gui = furi_record_open(RECORD_GUI);
     app->notifications = furi_record_open(RECORD_NOTIFICATION);
 
     app->view_dispatcher = view_dispatcher_alloc();
-    app->scene_manager   = scene_manager_alloc(&mobib_scene_handlers, app);
+    app->scene_manager = scene_manager_alloc(&mobib_scene_handlers, app);
 
     view_dispatcher_set_event_callback_context(app->view_dispatcher, app);
     view_dispatcher_set_navigation_event_callback(app->view_dispatcher, mobib_back_event);
@@ -72,8 +72,7 @@ static MobibApp* mobib_app_alloc(void) {
         app->view_dispatcher, MobibViewSubmenu, submenu_get_view(app->submenu));
 
     app->widget = widget_alloc();
-    view_dispatcher_add_view(
-        app->view_dispatcher, MobibViewWidget, widget_get_view(app->widget));
+    view_dispatcher_add_view(app->view_dispatcher, MobibViewWidget, widget_get_view(app->widget));
 
     app->text_box = text_box_alloc();
     view_dispatcher_add_view(
@@ -88,7 +87,7 @@ static MobibApp* mobib_app_alloc(void) {
     view_dispatcher_add_view(
         app->view_dispatcher, MobibViewDialogEx, dialog_ex_get_view(app->dialog_ex));
 
-    app->dump_path   = furi_string_alloc();
+    app->dump_path = furi_string_alloc();
     app->text_buffer = furi_string_alloc();
 
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);

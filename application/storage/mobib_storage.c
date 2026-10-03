@@ -59,7 +59,8 @@ bool mobib_holder_display_name(const CalypsoHolder* holder, FuriString* out) {
     }
 
     const char* surname = sep;
-    while(*surname == ' ') surname++;
+    while(*surname == ' ')
+        surname++;
     furi_string_set_str(out, surname);
     furi_string_push_back(out, ' ');
 
@@ -73,7 +74,8 @@ bool mobib_holder_display_name(const CalypsoHolder* holder, FuriString* out) {
 
 /* Look for an existing dump of the same card (same PUPI) so a re-scan
  * refreshes it instead of piling up "NOM Prenom 2", "NOM Prenom 3"... */
-static bool mobib_storage_find_card(Storage* storage, const MobibCardInfo* card, FuriString* path_out) {
+static bool
+    mobib_storage_find_card(Storage* storage, const MobibCardInfo* card, FuriString* path_out) {
     if(card->pupi_len == 0) return false;
 
     File* dir = storage_file_alloc(storage);
@@ -128,8 +130,7 @@ static void mobib_storage_build_path(
     } else if(mobib_dump_holder(dump, &holder) && mobib_holder_display_name(&holder, name)) {
         furi_string_printf(
             path_out, "%s/%s%s", MOBIB_DUMP_DIR, furi_string_get_cstr(name), MOBIB_DUMP_EXT);
-        for(unsigned n = 2; storage_common_exists(storage, furi_string_get_cstr(path_out));
-            ++n) {
+        for(unsigned n = 2; storage_common_exists(storage, furi_string_get_cstr(path_out)); ++n) {
             furi_string_printf(
                 path_out,
                 "%s/%s %u%s",
@@ -145,8 +146,12 @@ static void mobib_storage_build_path(
             "%s/%s_%04u%02u%02uT%02u%02u%02u%s",
             MOBIB_DUMP_DIR,
             furi_string_get_cstr(name),
-            now->year, now->month, now->day,
-            now->hour, now->minute, now->second,
+            now->year,
+            now->month,
+            now->day,
+            now->hour,
+            now->minute,
+            now->second,
             MOBIB_DUMP_EXT);
     }
 
@@ -174,20 +179,19 @@ static bool mobib_storage_write_records(FlipperFormat* ff, const MobibDump* dump
     if(!flipper_format_write_uint32(ff, "CalypsoSelected", &calypso, 1)) return false;
 
     if(dump->calypso_selected && dump->fci_len > 0) {
-        if(!flipper_format_write_hex(ff, "CalypsoFCI", dump->fci, dump->fci_len))
-            return false;
+        if(!flipper_format_write_hex(ff, "CalypsoFCI", dump->fci, dump->fci_len)) return false;
     }
 
     const uint32_t count = dump->record_count;
     if(!flipper_format_write_uint32(ff, "Records", &count, 1)) return false;
 
     /* Deep-scan secondary applications. */
-    const uint32_t mpp = dump->has_mpp     ? 1 : 0;
-    const uint32_t rt2 = dump->has_rt2     ? 1 : 0;
-    const uint32_t et  = dump->has_eticket ? 1 : 0;
-    if(!flipper_format_write_uint32(ff, "AppMpp",     &mpp, 1)) return false;
-    if(!flipper_format_write_uint32(ff, "AppRt2",     &rt2, 1)) return false;
-    if(!flipper_format_write_uint32(ff, "AppEticket", &et,  1)) return false;
+    const uint32_t mpp = dump->has_mpp ? 1 : 0;
+    const uint32_t rt2 = dump->has_rt2 ? 1 : 0;
+    const uint32_t et = dump->has_eticket ? 1 : 0;
+    if(!flipper_format_write_uint32(ff, "AppMpp", &mpp, 1)) return false;
+    if(!flipper_format_write_uint32(ff, "AppRt2", &rt2, 1)) return false;
+    if(!flipper_format_write_uint32(ff, "AppEticket", &et, 1)) return false;
 
     /* Deep-scan path-selected extras: stored as parallel keys so the
      * loader can iterate without a registry. */
@@ -205,8 +209,7 @@ static bool mobib_storage_write_records(FlipperFormat* ff, const MobibDump* dump
         if(!flipper_format_write_string_cstr(ff, k, e->label)) return false;
 
         snprintf(k, sizeof(k), "Ex%02zu_Data", i);
-        if(e->len > 0 && !flipper_format_write_hex(ff, k, e->data, e->len))
-            return false;
+        if(e->len > 0 && !flipper_format_write_hex(ff, k, e->data, e->len)) return false;
     }
 
     /* Path-selected HOLDER_EXTENDED file. Persisted as a single hex blob
@@ -218,8 +221,7 @@ static bool mobib_storage_write_records(FlipperFormat* ff, const MobibDump* dump
             if(dump->holder_ext_len[i] == 0) continue;
             char hkey[24];
             snprintf(hkey, sizeof(hkey), "HolderExt%u", (unsigned)(i + 1));
-            if(!flipper_format_write_hex(
-                   ff, hkey, dump->holder_ext[i], dump->holder_ext_len[i]))
+            if(!flipper_format_write_hex(ff, hkey, dump->holder_ext[i], dump->holder_ext_len[i]))
                 return false;
         }
     }
@@ -307,7 +309,8 @@ bool mobib_postal_lookup(uint16_t code, FuriString* commune) {
     if(file_stream_open(stream, MOBIB_POSTAL_CODES_PATH, FSAM_READ, FSOM_OPEN_EXISTING)) {
         while(stream_read_line(stream, line)) {
             if(!furi_string_start_with_str(line, prefix)) continue;
-            furi_string_set_n(commune, line, strlen(prefix), furi_string_size(line) - strlen(prefix));
+            furi_string_set_n(
+                commune, line, strlen(prefix), furi_string_size(line) - strlen(prefix));
             furi_string_trim(commune);
             break;
         }
@@ -326,8 +329,7 @@ void mobib_storage_migrate_legacy(void) {
        !storage_common_exists(storage, MOBIB_DUMP_DIR)) {
         storage_simply_mkdir(storage, "/ext/apps_data");
         storage_simply_mkdir(storage, "/ext/apps_data/mobipper");
-        const FS_Error err =
-            storage_common_rename(storage, MOBIB_DUMP_DIR_LEGACY, MOBIB_DUMP_DIR);
+        const FS_Error err = storage_common_rename(storage, MOBIB_DUMP_DIR_LEGACY, MOBIB_DUMP_DIR);
         FURI_LOG_I(TAG, "legacy dumps migrated: %s", storage_error_get_desc(err));
         /* Drop the old app folder if nothing else is left in it. */
         storage_common_remove(storage, "/ext/apps_data/mobib");
@@ -446,8 +448,7 @@ bool mobib_storage_load_dump(const char* path, MobibDump* dump) {
 
         if(dump->calypso_selected) {
             uint32_t fci_len = 0;
-            if(flipper_format_get_value_count(ff, "CalypsoFCI", &fci_len) &&
-               fci_len > 0) {
+            if(flipper_format_get_value_count(ff, "CalypsoFCI", &fci_len) && fci_len > 0) {
                 if(fci_len > sizeof(dump->fci)) fci_len = sizeof(dump->fci);
                 if(flipper_format_read_hex(ff, "CalypsoFCI", dump->fci, fci_len)) {
                     dump->fci_len = fci_len;
@@ -462,8 +463,8 @@ bool mobib_storage_load_dump(const char* path, MobibDump* dump) {
 
         /* Deep-scan apps. Ignore failures — older dumps predate them. */
         uint32_t flag = 0;
-        if(flipper_format_read_uint32(ff, "AppMpp",     &flag, 1)) dump->has_mpp     = flag != 0;
-        if(flipper_format_read_uint32(ff, "AppRt2",     &flag, 1)) dump->has_rt2     = flag != 0;
+        if(flipper_format_read_uint32(ff, "AppMpp", &flag, 1)) dump->has_mpp = flag != 0;
+        if(flipper_format_read_uint32(ff, "AppRt2", &flag, 1)) dump->has_rt2 = flag != 0;
         if(flipper_format_read_uint32(ff, "AppEticket", &flag, 1)) dump->has_eticket = flag != 0;
 
         /* Deep-scan extras — optional block. */
@@ -504,8 +505,7 @@ bool mobib_storage_load_dump(const char* path, MobibDump* dump) {
 
         /* HolderExt1 / HolderExt2 — best effort. */
         uint32_t ext_present = 0;
-        if(flipper_format_read_uint32(ff, "HolderExtPresent", &ext_present, 1) &&
-           ext_present) {
+        if(flipper_format_read_uint32(ff, "HolderExtPresent", &ext_present, 1) && ext_present) {
             for(size_t i = 0; i < MOBIB_HOLDER_EXT_RECS; ++i) {
                 char hkey[16];
                 snprintf(hkey, sizeof(hkey), "HolderExt%u", (unsigned)(i + 1));

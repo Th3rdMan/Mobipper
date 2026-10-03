@@ -16,25 +16,25 @@
  * decimal 86, NOT decimal 56. We therefore compare against the raw
  * value (0x0NN), not the ISO numeric. */
 static const struct {
-    uint16_t    raw;        /**< 12-bit raw value, identical to BCD digits. */
+    uint16_t raw; /**< 12-bit raw value, identical to BCD digits. */
     const char* name;
 } kCountries[] = {
     {0x056, "Belgique"},
     {0x250, "France"},
     {0x528, "Pays-Bas"},
     {0x380, "Italie"},
-    {0,     NULL},
+    {0, NULL},
 };
 
 static const struct {
-    uint16_t    country;    /**< raw 12-bit value from kCountries. */
-    uint16_t    network;    /**< raw 12-bit value. */
+    uint16_t country; /**< raw 12-bit value from kCountries. */
+    uint16_t network; /**< raw 12-bit value. */
     const char* name;
 } kNetworks[] = {
     /* Full 24-bit NetworkId 0x056001 — see metrodroid MobibTransitData
      * MOBIB_NETWORK_ID. Used by STIB, De Lijn, TEC and SNCB alike. */
     {0x056, 0x001, "MOBIB"},
-    {0,     0,     NULL},
+    {0, 0, NULL},
 };
 
 static const char* lookup_country(uint16_t code) {
@@ -71,7 +71,7 @@ bool calypso_env_parse(const uint8_t* rec, size_t rec_len, CalypsoEnvironment* o
     /* NetworkId is 24 bits packed as (country 12 | network 12). */
     const uint32_t net = calypso_bits_read(&b, 24);
     out->country_code = (uint16_t)((net >> 12) & 0xFFF);
-    out->network_id   = (uint16_t)(net & 0xFFF);
+    out->network_id = (uint16_t)(net & 0xFFF);
 
     /* ENV_UNKNOWN_B is 5 bits for v>=3 and 9 bits for v<=2. */
     calypso_bits_skip(&b, out->version >= 3 ? 5 : 9);
@@ -88,7 +88,7 @@ bool calypso_env_parse(const uint8_t* rec, size_t rec_len, CalypsoEnvironment* o
     out->birth_year_top2 = (uint8_t)calypso_bits_read(&b, 8);
     out->birth_year_bot2 = (uint8_t)calypso_bits_read(&b, 8);
     out->birth_month_bcd = (uint8_t)calypso_bits_read(&b, 8);
-    out->birth_day_bcd   = (uint8_t)calypso_bits_read(&b, 8);
+    out->birth_day_bcd = (uint8_t)calypso_bits_read(&b, 8);
 
     /* ENV_CARD_SERIAL: 76 bits BCD — skip for now, the FCI carries the
      * canonical PUPI-derived application serial number anyway. */

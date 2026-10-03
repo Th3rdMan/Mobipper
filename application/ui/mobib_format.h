@@ -23,7 +23,4 @@ typedef enum {
 
 const char* mobib_section_title(MobibSection section);
 
-void mobib_format_section(
-    MobibSection      section,
-    const MobibDump*  dump,
-    FuriString*       out);
+void mobib_format_section(MobibSection section, const MobibDump* dump, FuriString* out);

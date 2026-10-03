@@ -28,26 +28,26 @@
 #include <stdbool.h>
 
 typedef struct {
-    bool     valid;
+    bool valid;
 
-    uint8_t  version;
+    uint8_t version;
     uint16_t country_code; /**< ISO 3166 numeric — top 12 bits of NetworkId. */
-    uint16_t network_id;   /**< Bottom 12 bits of NetworkId.                   */
-    uint8_t  issuer_id;    /**< Always 0 in the MOBIB profile (no such field). */
+    uint16_t network_id; /**< Bottom 12 bits of NetworkId.                   */
+    uint8_t issuer_id; /**< Always 0 in the MOBIB profile (no such field). */
 
     /* Days since 1997-01-01 (0 = 1997-01-01). */
     uint16_t validity_end_days;
     /* Same value broken out as Gregorian Y/M/D. Zero if computation fails. */
     uint16_t validity_end_year;
-    uint8_t  validity_end_month;
-    uint8_t  validity_end_day;
+    uint8_t validity_end_month;
+    uint8_t validity_end_day;
 
     /* Holder fields. Always present in the bit stream but typically zero
      * on anonymous MOBIB Basic cards. */
-    uint8_t  birth_year_top2;   /**< First two BCD digits, e.g. 0x19 or 0x20.   */
-    uint8_t  birth_year_bot2;   /**< Last two BCD digits.                       */
-    uint8_t  birth_month_bcd;   /**< BCD-encoded month, 0x01..0x12.             */
-    uint8_t  birth_day_bcd;     /**< BCD-encoded day, 0x01..0x31.               */
+    uint8_t birth_year_top2; /**< First two BCD digits, e.g. 0x19 or 0x20.   */
+    uint8_t birth_year_bot2; /**< Last two BCD digits.                       */
+    uint8_t birth_month_bcd; /**< BCD-encoded month, 0x01..0x12.             */
+    uint8_t birth_day_bcd; /**< BCD-encoded day, 0x01..0x31.               */
     uint16_t holder_postal_code;
 
     /* Best-effort human labels. NULL when unknown — never freed by the caller. */

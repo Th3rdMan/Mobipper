@@ -13,9 +13,9 @@
 #include <stdbool.h>
 
 typedef struct {
-    uint32_t       tag;     /**< Tag, packed as (b0<<8)|b1 for two-byte tags. */
-    size_t         length;  /**< Number of bytes pointed to by `value`.        */
-    const uint8_t* value;   /**< Borrowed pointer into the original buffer.    */
+    uint32_t tag; /**< Tag, packed as (b0<<8)|b1 for two-byte tags. */
+    size_t length; /**< Number of bytes pointed to by `value`.        */
+    const uint8_t* value; /**< Borrowed pointer into the original buffer.    */
 } CalypsoTlv;
 
 /**
@@ -31,8 +31,4 @@ bool calypso_tlv_next(const uint8_t** cursor, const uint8_t* end, CalypsoTlv* ou
  * Recursively descends into constructed TLVs (tag class bit 0x20 set).
  * Returns the first match.
  */
-bool calypso_tlv_find(
-    const uint8_t* buf,
-    size_t         len,
-    uint32_t       tag,
-    CalypsoTlv*    out);
+bool calypso_tlv_find(const uint8_t* buf, size_t len, uint32_t tag, CalypsoTlv* out);

@@ -7,8 +7,8 @@
 bool calypso_date_from_days(
     uint16_t days,
     uint16_t* year_out,
-    uint8_t*  month_out,
-    uint8_t*  day_out) {
+    uint8_t* month_out,
+    uint8_t* day_out) {
     static const uint8_t mdays[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     uint16_t year = 1997;
     uint32_t remaining = days;
@@ -32,14 +32,14 @@ bool calypso_date_from_days(
         month++;
     }
 
-    *year_out  = year;
+    *year_out = year;
     *month_out = month;
-    *day_out   = (uint8_t)(remaining + 1);
+    *day_out = (uint8_t)(remaining + 1);
     return true;
 }
 
 void calypso_time_from_minutes(uint16_t minutes, uint8_t* hour, uint8_t* minute) {
     if(minutes >= 24 * 60) minutes = 24 * 60 - 1;
-    *hour   = (uint8_t)(minutes / 60);
+    *hour = (uint8_t)(minutes / 60);
     *minute = (uint8_t)(minutes % 60);
 }

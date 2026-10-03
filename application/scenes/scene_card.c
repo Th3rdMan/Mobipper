@@ -42,8 +42,7 @@ void mobib_scene_card_on_enter(void* context) {
     }
 
     submenu_set_selected_item(
-        app->submenu,
-        scene_manager_get_scene_state(app->scene_manager, MobibSceneCard));
+        app->submenu, scene_manager_get_scene_state(app->scene_manager, MobibSceneCard));
 
     view_dispatcher_switch_to_view(app->view_dispatcher, MobibViewSubmenu);
 }
