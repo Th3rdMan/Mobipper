@@ -71,6 +71,50 @@ bool mobib_holder_display_name(const CalypsoHolder* holder, FuriString* out) {
     return !furi_string_empty(out);
 }
 
+/* Look for an existing dump of the same card (same PUPI) so a re-scan
+ * refreshes it instead of piling up "NOM Prenom 2", "NOM Prenom 3"... */
+static bool mobib_storage_find_card(Storage* storage, const MobibCardInfo* card, FuriString* path_out) {
+    if(card->pupi_len == 0) return false;
+
+    File* dir = storage_file_alloc(storage);
+    FlipperFormat* ff = flipper_format_file_alloc(storage);
+    FuriString* path = furi_string_alloc();
+    FuriString* type = furi_string_alloc();
+    char name[128];
+    bool found = false;
+
+    if(storage_dir_open(dir, MOBIB_DUMP_DIR)) {
+        FileInfo info;
+        while(!found && storage_dir_read(dir, &info, name, sizeof(name))) {
+            if(file_info_is_dir(&info)) continue;
+            const size_t n = strlen(name);
+            const size_t e = strlen(MOBIB_DUMP_EXT);
+            if(n <= e || strcmp(name + n - e, MOBIB_DUMP_EXT) != 0) continue;
+
+            furi_string_printf(path, "%s/%s", MOBIB_DUMP_DIR, name);
+            uint32_t version = 0;
+            uint32_t len = 0;
+            uint8_t pupi[sizeof(card->pupi)];
+            if(flipper_format_file_open_existing(ff, furi_string_get_cstr(path)) &&
+               flipper_format_read_header(ff, type, &version) &&
+               flipper_format_get_value_count(ff, "PUPI", &len) && len == card->pupi_len &&
+               flipper_format_read_hex(ff, "PUPI", pupi, len) &&
+               memcmp(pupi, card->pupi, len) == 0) {
+                furi_string_set(path_out, path);
+                found = true;
+            }
+            flipper_format_file_close(ff);
+        }
+    }
+    storage_dir_close(dir);
+
+    furi_string_free(type);
+    furi_string_free(path);
+    flipper_format_free(ff);
+    storage_file_free(dir);
+    return found;
+}
+
 static void mobib_storage_build_path(
     Storage* storage,
     const MobibDump* dump,
@@ -79,7 +123,9 @@ static void mobib_storage_build_path(
     CalypsoHolder holder;
     FuriString* name = furi_string_alloc();
 
-    if(mobib_dump_holder(dump, &holder) && mobib_holder_display_name(&holder, name)) {
+    if(mobib_storage_find_card(storage, &dump->card, path_out)) {
+        /* Same card already saved: overwrite it. */
+    } else if(mobib_dump_holder(dump, &holder) && mobib_holder_display_name(&holder, name)) {
         furi_string_printf(
             path_out, "%s/%s%s", MOBIB_DUMP_DIR, furi_string_get_cstr(name), MOBIB_DUMP_EXT);
         for(unsigned n = 2; storage_common_exists(storage, furi_string_get_cstr(path_out));
@@ -206,7 +252,7 @@ bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out) {
      * failures by the API but we don't care — only the final stat
      * matters and we let `flipper_format_file_open_new` surface that. */
     storage_simply_mkdir(storage, "/ext/apps_data");
-    storage_simply_mkdir(storage, "/ext/apps_data/mobib");
+    storage_simply_mkdir(storage, "/ext/apps_data/mobipper");
     storage_simply_mkdir(storage, MOBIB_DUMP_DIR);
 
     DateTime now;
@@ -219,8 +265,8 @@ bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out) {
     bool ok = false;
 
     do {
-        if(!flipper_format_file_open_new(ff, furi_string_get_cstr(path))) {
-            FURI_LOG_E(TAG, "open_new failed: %s", furi_string_get_cstr(path));
+        if(!flipper_format_file_open_always(ff, furi_string_get_cstr(path))) {
+            FURI_LOG_E(TAG, "open_always failed: %s", furi_string_get_cstr(path));
             break;
         }
         if(!flipper_format_write_header_cstr(ff, "MOBIB raw dump", MOBIB_DUMP_FORMAT_VERSION))
@@ -272,6 +318,21 @@ bool mobib_postal_lookup(uint16_t code, FuriString* commune) {
     stream_free(stream);
     furi_record_close(RECORD_STORAGE);
     return !furi_string_empty(commune);
+}
+
+void mobib_storage_migrate_legacy(void) {
+    Storage* storage = furi_record_open(RECORD_STORAGE);
+    if(storage_dir_exists(storage, MOBIB_DUMP_DIR_LEGACY) &&
+       !storage_common_exists(storage, MOBIB_DUMP_DIR)) {
+        storage_simply_mkdir(storage, "/ext/apps_data");
+        storage_simply_mkdir(storage, "/ext/apps_data/mobipper");
+        const FS_Error err =
+            storage_common_rename(storage, MOBIB_DUMP_DIR_LEGACY, MOBIB_DUMP_DIR);
+        FURI_LOG_I(TAG, "legacy dumps migrated: %s", storage_error_get_desc(err));
+        /* Drop the old app folder if nothing else is left in it. */
+        storage_common_remove(storage, "/ext/apps_data/mobib");
+    }
+    furi_record_close(RECORD_STORAGE);
 }
 
 void mobib_storage_first_dump(FuriString* path_out) {

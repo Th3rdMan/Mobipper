@@ -2,7 +2,7 @@
  * MOBIB — dump persistence.
  *
  * Writes a `MobibDump` to the SD card as a FlipperFormat file under
- * `/ext/apps_data/mobib/dumps/`. The format is human-readable, version
+ * `/ext/apps_data/mobipper/dumps/`. The format is human-readable, version
  * stamped and stable: every record is stored as a hex-array under a key
  * encoding its SFI and record index, so future tooling (decoder,
  * exporter) can iterate without parsing surprises.
@@ -16,7 +16,10 @@
 #include "../calypso/calypso_holder.h"
 
 /** Directory where dumps are stored. Created on demand. */
-#define MOBIB_DUMP_DIR "/ext/apps_data/mobib/dumps"
+#define MOBIB_DUMP_DIR "/ext/apps_data/mobipper/dumps"
+
+/** Dump directory used before the app id became "mobipper" (v0.1). */
+#define MOBIB_DUMP_DIR_LEGACY "/ext/apps_data/mobib/dumps"
 
 /** File extension for raw dumps (purely cosmetic). */
 #define MOBIB_DUMP_EXT ".mobibdump"
@@ -45,8 +48,9 @@ bool mobib_holder_display_name(const CalypsoHolder* holder, FuriString* out);
 /**
  * @brief Persist a dump to SD.
  *
- * Personalised cards are saved as "NOM Prenom.mobibdump" (with a numeric
- * suffix when the name already exists), anonymous ones as
+ * If a dump of the same card (same PUPI) already exists, it is overwritten.
+ * Otherwise personalised cards are saved as "NOM Prenom.mobibdump" (with a
+ * numeric suffix when the name already exists), anonymous ones as
  * "<PUPI>_<UTC>.mobibdump".
  *
  * @param[in]  dump      Filled snapshot. Must not be NULL.
@@ -67,6 +71,13 @@ bool mobib_storage_save_dump(const MobibDump* dump, FuriString* path_out);
  *         file is missing.
  */
 bool mobib_postal_lookup(uint16_t code, FuriString* commune);
+
+/**
+ * @brief Move dumps saved by v0.1 (app id "mobib") to the current folder.
+ *
+ * Runs once: only when the legacy folder exists and the current one does not.
+ */
+void mobib_storage_migrate_legacy(void);
 
 /**
  * @brief Path of the alphabetically first dump, or MOBIB_DUMP_DIR if none.

@@ -105,6 +105,36 @@ static bool contract_end(const CalypsoContract* c, uint16_t* y, uint8_t* m, uint
     return true;
 }
 
+/* Remaining trips of the contract in slot `slot` (1-based), per metrodroid
+ * Calypso1545TransitData.getCounter + MobibSubscription: slots 1..4 only,
+ * 24-bit counter taken from the shared counter file (SFI 19, 3 bytes per
+ * slot) or else from the slot's own file (SFI 0A..0D). Contracts whose
+ * tariff bits 10-12 equal 4 do not count trips. Time-based passes also
+ * carry a counter (0 on real 2026 STIB monthly passes): only trip tickets
+ * (known Jump tariffs, or contracts without a duration) are reported. */
+static bool contract_trips_left(
+    const MobibDump* d,
+    const CalypsoContract* c,
+    uint8_t slot,
+    uint32_t* trips) {
+    if(slot < 1 || slot > 4) return false;
+    if(((c->tariff >> 10) & 7) == 4) return false;
+    const bool trip_ticket = c->tariff == CALYPSO_TARIFF_JUMP_1_TRIP ||
+                             c->tariff == CALYPSO_TARIFF_JUMP_10_TRIPS;
+    if(!trip_ticket && (c->flags & CALYPSO_CONTRACT_HAS_DURATION) && c->duration) return false;
+
+    const MobibRecord* r = find_record(d, 0x19, 1);
+    size_t off = 3u * (slot - 1);
+    if(!r || r->len < off + 3) {
+        r = find_record(d, (uint8_t)(0x0A + slot - 1), 1);
+        off = 0;
+        if(!r || r->len < 3) return false;
+    }
+    *trips = ((uint32_t)r->data[off] << 16) | ((uint32_t)r->data[off + 1] << 8) |
+             r->data[off + 2];
+    return true;
+}
+
 /* ----------------------------- Journeys ----------------------------- */
 
 typedef struct {
@@ -233,6 +263,8 @@ static void format_overview(const MobibDump* d, FuriString* s) {
     /* Counts, latest subscription end and latest journey in one pass. */
     size_t contracts = 0, journeys = 0;
     uint32_t best_end = 0; /* YYYYMMDD */
+    uint32_t trips_left = 0;
+    bool have_trips = false;
     CalypsoEvent last;
     bool have_last = false;
     for(size_t i = 0; i < d->record_count; ++i) {
@@ -241,6 +273,12 @@ static void format_overview(const MobibDump* d, FuriString* s) {
             CalypsoContract c;
             if(!calypso_contract_parse(r->data, r->len, &c)) continue;
             contracts++;
+            uint32_t t;
+            /* Used-up tickets stay on the card: only mention trips left. */
+            if(contract_trips_left(d, &c, r->record, &t) && t) {
+                trips_left += t;
+                have_trips = true;
+            }
             uint16_t y;
             uint8_t m, dd;
             if(contract_end(&c, &y, &m, &dd)) {
@@ -270,6 +308,9 @@ static void format_overview(const MobibDump* d, FuriString* s) {
             (unsigned long)(best_end / 10000),
             best_end < today ? " (echu)" : "");
     }
+    if(have_trips) {
+        furi_string_cat_printf(s, "Voyages restants : %lu\n", (unsigned long)trips_left);
+    }
 
     if(have_last) {
         JourneyInfo j;
@@ -290,7 +331,7 @@ static void format_overview(const MobibDump* d, FuriString* s) {
         furi_string_free(mode);
         furi_string_cat_str(s, "\n");
     }
-    if(best_end || have_last) furi_string_cat_str(s, "\n");
+    if(best_end || have_trips || have_last) furi_string_cat_str(s, "\n");
 
     furi_string_cat_printf(s, "%zu abonnement%s\n", contracts, contracts > 1 ? "s" : "");
     furi_string_cat_printf(s, "%zu trajet%s\n", journeys, journeys > 1 ? "s" : "");
@@ -405,6 +446,10 @@ static void format_contracts(const MobibDump* d, FuriString* s) {
             furi_string_cat_printf(
                 s, "  Prix %u,%02u EUR\n",
                 c.price_amount / 100, c.price_amount % 100);
+        }
+        uint32_t trips;
+        if(contract_trips_left(d, &c, r->record, &trips)) {
+            furi_string_cat_printf(s, "  Voyages restants %lu\n", (unsigned long)trips);
         }
         furi_string_cat_str(s, "\n");
     }

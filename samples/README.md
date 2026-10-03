@@ -20,6 +20,6 @@ def send(cmd, wait=6):
         d=s.read(8192)
         if d: out+=d; t=time.time()
     return out.decode('utf-8','replace')
-print(send('storage list /ext/apps_data/mobib/dumps'))
+print(send('storage list /ext/apps_data/mobipper/dumps'))
 PY
 ```

@@ -9,6 +9,7 @@
  */
 
 #include "mobib_app.h"
+#include "storage/mobib_storage.h"
 
 /* ------------------------------------------------------------ scene tables */
 
@@ -131,6 +132,7 @@ int32_t mobib_app_main(void* p) {
     MobibApp* app = mobib_app_alloc();
     if(!app) return -1;
 
+    mobib_storage_migrate_legacy();
     scene_manager_next_scene(app->scene_manager, MobibSceneStart);
     view_dispatcher_run(app->view_dispatcher);
 

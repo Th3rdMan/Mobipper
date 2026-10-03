@@ -1,7 +1,7 @@
 /*
  * MOBIB — Saved cards scene.
  *
- * Shows the app's own FileBrowser view scoped to `/ext/apps_data/mobib/dumps`
+ * Shows the app's own FileBrowser view scoped to `/ext/apps_data/mobipper/dumps`
  * and filtered to `.mobibdump`. The system Dialogs service is avoided on
  * purpose: it serves one browser at a time, and when the Apps menu or Archive
  * holds it the app blocked forever on a blank screen.
