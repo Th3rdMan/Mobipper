@@ -12,11 +12,13 @@
 **Mobipper** (MOBIB + Flipper) est une application [Flipper Zero](https://flipperzero.one/) qui lit et décode les cartes de transport belges **MOBIB** — la carte sans contact Calypso / ISO 14443-B partagée par la **STIB/MIVB**, la **SNCB/NMBS**, **De Lijn** et le **TEC**.  
 Il suffit de poser la carte contre le dos du Flipper : l'application lit tous les fichiers accessibles, décode les informations utiles (titulaire, abonnements, derniers trajets) et sauvegarde la lecture sur la carte SD.
 
-> Construit sur la base de [flipper-mobib](https://github.com/i12bp8/flipper-mobib) par **i12bp8**, traduit en français, réorganisé et enrichi.
+> 🙏 **Mobipper n'existerait pas sans [flipper-mobib](https://github.com/i12bp8/flipper-mobib) de [i12bp8](https://github.com/i12bp8).**  
+> Tout le cœur technique vient de son travail : le dialogue NFC avec la carte (ISO 14443-B / Calypso), la lecture complète des fichiers, les décodeurs des champs MOBIB et la sauvegarde sur SD.  
+> Mobipper n'en est qu'une adaptation : traduction en français, réorganisation de l'interface et quelques enrichissements.
 
 <p align="center">
-  <img src="docs/screenshots/demo_01_apps.png" width="384" alt="Icône dans Apps → NFC">
-  <img src="docs/screenshots/demo_06_resume_1.png" width="384" alt="Résumé après lecture">
+  <img src="docs/screenshots/demo_01_apps_selection.png" width="384" alt="Icône dans Apps → NFC">
+  <img src="docs/screenshots/demo_06_resume_titulaire.png" width="384" alt="Résumé après lecture">
 </p>
 
 ---
@@ -43,8 +45,8 @@ Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, comm
 | | | |
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/demo_02_menu.png" width="256"><br>Menu principal | <img src="docs/screenshots/demo_03_lecture.png" width="256"><br>Lecture d'une carte | <img src="docs/screenshots/demo_04_sauvegardes.png" width="256"><br>Sauvegardes |
-| <img src="docs/screenshots/demo_06_resume_1.png" width="256"><br>Résumé (titulaire) | <img src="docs/screenshots/demo_07_resume_2.png" width="256"><br>Résumé (carte, abonnement) | <img src="docs/screenshots/demo_08_resume_3.png" width="256"><br>Résumé (dernière utilisation) |
-| <img src="docs/screenshots/demo_05_carte.png" width="256"><br>Menu de la carte | <img src="docs/screenshots/demo_09_titulaire.png" width="256"><br>Titulaire | <img src="docs/screenshots/demo_10_trajets_1.png" width="256"><br>Trajets (tram + correspondance) |
+| <img src="docs/screenshots/demo_06_resume_titulaire.png" width="256"><br>Résumé (titulaire) | <img src="docs/screenshots/demo_07_resume_2.png" width="256"><br>Résumé (carte, abonnement) | <img src="docs/screenshots/demo_08_resume_3.png" width="256"><br>Résumé (dernière utilisation) |
+| <img src="docs/screenshots/demo_05_carte.png" width="256"><br>Menu de la carte | <img src="docs/screenshots/demo_09_titulaire_fiche.png" width="256"><br>Titulaire | <img src="docs/screenshots/demo_10_trajets_1.png" width="256"><br>Trajets (tram + correspondance) |
 | <img src="docs/screenshots/demo_11_trajets_2.png" width="256"><br>Trajets (métro) | <img src="docs/screenshots/demo_12_supprimer.png" width="256"><br>Suppression d'une sauvegarde | <img src="docs/screenshots/demo_13_apropos.png" width="256"><br>A propos |
 
 ---
@@ -224,9 +226,19 @@ python tools/postal_codes.py postal_codes.csv files/postal_codes.txt --report
 **Th3rd**  
 👁️‍🗨️ [https://github.com/Th3rdMan](https://github.com/Th3rdMan)
 
-Basé sur [**flipper-mobib**](https://github.com/i12bp8/flipper-mobib) par [**i12bp8**](https://github.com/i12bp8) — merci pour les bases posées. Sa documentation d'origine (en anglais) est conservée dans [`docs/README.upstream.md`](docs/README.upstream.md).
+### 🏗️ Le projet d'origine : [flipper-mobib](https://github.com/i12bp8/flipper-mobib) par [**i12bp8**](https://github.com/i12bp8)
 
-Remerciements également à :
+Un immense merci à **i12bp8**, sans qui Mobipper n'existerait pas. Son application a posé toutes les fondations, et c'est le travail le plus difficile :
+
+- le **lecteur NFC** ISO 14443-B et la couche APDU Calypso ;
+- la **lecture complète de la carte** : fichiers SFI, fichier titulaire, applications secondaires ;
+- les **décodeurs** de l'environnement, du titulaire, des abonnements et des trajets, portés depuis metrodroid ;
+- la **sauvegarde** des lectures en FlipperFormat et leur relecture sans la carte ;
+- une architecture claire, qui rend les adaptations comme celle-ci simples à réaliser.
+
+Si ce projet vous est utile, allez aussi mettre une ⭐ sur [**i12bp8/flipper-mobib**](https://github.com/i12bp8/flipper-mobib). Sa documentation d'origine, en anglais, est conservée dans [`docs/README.upstream.md`](docs/README.upstream.md).
+
+### Autres sources
 
 - [**metrodroid**](https://github.com/metrodroid/metrodroid) — structures des champs MOBIB / Calypso (GPL-3.0) ;
 - [**zoobab/mobib-extractor**](https://github.com/zoobab/mobib-extractor) — table des stations de métro ;

@@ -58,7 +58,7 @@ for i, l in enumerate(lines):
 # 2. Holder (HOLDER_EXTENDED, 2 x 29 payload bytes, padded records).
 recs = [hexb(get("HolderExt1")), hexb(get("HolderExt2"))]
 flat = bytearray(58)
-set_bits(flat, 168, 32, bcd(19900315, 8))          # birth date
+set_bits(flat, 168, 32, bcd(19880404, 8))          # birth date
 set_bits(flat, 200, 2, 1)                          # gender: male
 name = [ord(c) - 64 for c in "REGINALD"] + [31] + [ord(c) - 64 for c in "BLECHMAN"]
 for k, v in enumerate(name):
@@ -73,7 +73,7 @@ for i in range(int(get("Records"))):
     if get(f"Rec{i:02d}_SFI") == "7" and get(f"Rec{i:02d}_Index") == "1":
         env = hexb(get(f"Rec{i:02d}_Data"))
         set_bits(env, 42, 14, days(datetime.date(2029, 5, 12)))  # card validity end
-        set_bits(env, 66, 32, bcd(19900315, 8))
+        set_bits(env, 66, 32, bcd(19880404, 8))
         set_bits(env, 98, 76, 0)                   # card serial
         set_bits(env, 179, 14, 1000)               # postal code
         put(f"Rec{i:02d}_Data", hexs(env))
