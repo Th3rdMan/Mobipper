@@ -6,10 +6,11 @@ App(
     requires=["gui", "notification", "storage", "nfc"],
     stack_size=4 * 1024,
     fap_icon="icons/mobib_10px.png",
+    fap_icon_assets="icons",
     fap_category="NFC",
     fap_author="Th3rd & i12bp8",
     fap_weburl="https://github.com/Th3rdMan/Mobipper",
-    fap_version="0.2",
+    fap_version="0.3",
     fap_description="Lire et explorer les cartes de transport belges MOBIB (Calypso).",
     fap_file_assets="files",
     sources=[

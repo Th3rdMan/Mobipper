@@ -12,6 +12,7 @@
 
 #include "../mobib_app.h"
 #include "../storage/mobib_storage.h"
+#include "mobipper_icons.h"
 
 enum {
     DumpsEventSelected = 0x200,
@@ -34,7 +35,7 @@ void mobib_scene_dumps_on_enter(void* context) {
     }
 
     file_browser_configure(
-        app->file_browser, MOBIB_DUMP_EXT, MOBIB_DUMP_DIR, true, true, NULL, true);
+        app->file_browser, MOBIB_DUMP_EXT, MOBIB_DUMP_DIR, true, true, &I_mobib_10px, true);
     file_browser_set_callback(app->file_browser, mobib_scene_dumps_browser_cb, app);
     file_browser_start(app->file_browser, app->browser_path);
 

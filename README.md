@@ -43,11 +43,11 @@ La table des arrêts est issue du réseau **STIB** : en dehors de Bruxelles, les
 
 Captures prises sur un Flipper Zero, avec une carte **fictive** (titulaire, commune, date de naissance, numéro de carte et trajets inventés — *BLECHMAN Reginald*).
 
-<p align="center"><img src="docs/demo_mobipper.gif" width="512" alt="Navigation dans Mobipper"></p>
+<p align="center"><img src="docs/demo_mobipper_2.gif" width="512" alt="Navigation dans Mobipper"></p>
 
 | | | |
 |:---:|:---:|:---:|
-| <img src="docs/screenshots/demo_02_menu.png" width="256"><br>Menu principal | <img src="docs/screenshots/demo_03_lecture.png" width="256"><br>Lecture d'une carte | <img src="docs/screenshots/demo_04_sauvegardes.png" width="256"><br>Sauvegardes |
+| <img src="docs/screenshots/demo_02_menu.png" width="256"><br>Menu principal | <img src="docs/screenshots/demo_03_lecture.png" width="256"><br>Lecture d'une carte | <img src="docs/screenshots/demo_04_sauvegardes_icone.png" width="256"><br>Sauvegardes |
 | <img src="docs/screenshots/demo_06_resume_titulaire.png" width="256"><br>Résumé (titulaire) | <img src="docs/screenshots/demo_07_resume_2.png" width="256"><br>Résumé (carte, abonnement) | <img src="docs/screenshots/demo_08_resume_3.png" width="256"><br>Résumé (dernière utilisation) |
 | <img src="docs/screenshots/demo_05_carte.png" width="256"><br>Menu de la carte | <img src="docs/screenshots/demo_09_titulaire_fiche.png" width="256"><br>Titulaire | <img src="docs/screenshots/demo_10_trajets_1.png" width="256"><br>Trajets (tram + correspondance) |
 | <img src="docs/screenshots/demo_11_trajets_2.png" width="256"><br>Trajets (métro) | <img src="docs/screenshots/demo_12_supprimer.png" width="256"><br>Suppression d'une sauvegarde | <img src="docs/screenshots/demo_13_apropos.png" width="256"><br>A propos |

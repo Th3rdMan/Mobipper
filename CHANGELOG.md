@@ -2,6 +2,12 @@
 
 Toutes les évolutions notables de Mobipper. Les versions suivent le format `major.minor` du catalogue d'applications Flipper.
 
+## v0.3 — 2026-10-04
+
+### Changements
+- Les sauvegardes s'affichent avec l'icône de Mobipper dans « Sauvegardes », au lieu du « ? » des fichiers de type inconnu.
+- README : capture des sauvegardes et GIF de démonstration mis à jour.
+
 ## v0.2 — 2026-10-04
 
 ### Ajouts

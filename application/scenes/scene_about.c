@@ -53,7 +53,7 @@ void mobib_scene_about_on_enter(void* context) {
         "metrodroid/metrodroid\n"
         "(GPL-3.0).\n"
         "\n"
-        "Mobipper v0.2\n"
+        "Mobipper v0.3\n"
         "GPL-3.0-or-later\n"
         "\n"
         "Par Th3rd\n"
