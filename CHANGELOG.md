@@ -1,6 +1,6 @@
 # Journal des versions
 
-Toutes les évolutions notables de Mobipper. Les versions suivent le format `major.minor` du catalogue d'applications Flipper.
+Toutes les évolutions notables de Mobipper. Les versions suivent le format `major.minor` des applications Flipper.
 
 ## v0.3 — 2026-10-04
 
